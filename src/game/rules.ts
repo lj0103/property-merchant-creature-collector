@@ -1,0 +1,11 @@
+import { ENERGY_TYPES, type Badge, type CreatureCard, type EnergyMap, type EnergyType, type Player } from './types';
+import { EMPTY_ENERGIES } from '../data/constants';
+export const getDiscounts = (p: Player): Record<EnergyType, number> => Object.fromEntries(ENERGY_TYPES.map(t => [t,p.capturedCards.filter(c=>c.element===t).length])) as Record<EnergyType,number>;
+export const getEffectiveCost = (p: Player,c: CreatureCard): Record<EnergyType,number> => { const d=getDiscounts(p); return Object.fromEntries(ENERGY_TYPES.map(t=>[t,Math.max(0,(c.cost[t]??0)-d[t])])) as Record<EnergyType,number>; };
+export const canCapture = (p: Player,c: CreatureCard) => { const cost=getEffectiveCost(p,c); return ENERGY_TYPES.reduce((n,t)=>n+Math.max(0,cost[t]-p.energies[t]),0)<=p.energies.wild; };
+export const paymentFor = (p: Player,c: CreatureCard): EnergyMap => { const pay=EMPTY_ENERGIES(), cost=getEffectiveCost(p,c); for(const t of ENERGY_TYPES){pay[t]=Math.min(p.energies[t],cost[t]);pay.wild+=cost[t]-pay[t];} return pay; };
+export const getScore = (p: Player) => p.capturedCards.reduce((s,c)=>s+c.points,0)+p.badges.reduce((s,b)=>s+b.points,0);
+export const canClaimBadge = (p: Player,b: Badge) => {const d=getDiscounts(p);return Object.entries(b.requirement).every(([t,n])=>d[t as EnergyType]>=(n??0));};
+export const tokenCount = (p: Player) => Object.values(p.energies).reduce((a,b)=>a+b,0);
+export const rankPlayers = (players: Player[]) => [...players].sort((a,b)=>getScore(b)-getScore(a)||a.capturedCards.length-b.capturedCards.length||a.energies.wild-b.energies.wild);
+export const getWinners = (players: Player[]) => { const ranked=rankPlayers(players), top=ranked[0]; return ranked.filter(p=>getScore(p)===getScore(top)&&p.capturedCards.length===top.capturedCards.length&&p.energies.wild===top.energies.wild).map(p=>p.id); };
