@@ -1,2 +1,2 @@
-import { useGameStore } from './store/gameStore'; import { SetupScreen } from './components/SetupScreen'; import { GameBoard } from './components/GameBoard';
-export default function App(){const phase=useGameStore(s=>s.phase);return phase==='setup'?<SetupScreen/>:<GameBoard/>}
+import { useState } from 'react'; import { useGameStore } from './store/gameStore'; import { SetupScreen } from './components/SetupScreen'; import { GameBoard } from './components/GameBoard'; import { OnlineGame } from './components/OnlineGame';
+export default function App(){const phase=useGameStore(s=>s.phase),[mode,setMode]=useState<'local'|'online'>('local');if(mode==='online')return <OnlineGame onBack={()=>setMode('local')}/>;return phase==='setup'?<SetupScreen onOnline={()=>setMode('online')}/>:<GameBoard/>}

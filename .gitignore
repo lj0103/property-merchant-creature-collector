@@ -3,5 +3,6 @@ dist
 .DS_Store
 *.local
 *.tsbuildinfo
+server/data/
 vite.config.js
 vite.config.d.ts

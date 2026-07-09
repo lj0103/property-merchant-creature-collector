@@ -1,0 +1,415 @@
+import cors from 'cors';
+import express from 'express';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Server } from 'socket.io';
+import { z } from 'zod';
+import { applyGameAction, type GameAction } from '../src/game/actions';
+import { createGame } from '../src/game/setup';
+import type { GameState } from '../src/game/types';
+import type {
+  ClientToServerEvents,
+  ConnectionState,
+  RoomPayload,
+  RoomPlayerPayload,
+  RoomStatus,
+  ServerErrorPayload,
+  ServerToClientEvents,
+  SessionPayload,
+} from '../src/multiplayer/protocol';
+
+interface SessionRecord extends SessionPayload {
+  socketId?: string;
+  lastSeenAt: string;
+}
+
+interface RoomRecord {
+  id: string;
+  code: string;
+  hostPlayerId: string;
+  status: RoomStatus;
+  maxPlayers: 2 | 3 | 4;
+  players: RoomPlayerPayload[];
+  gameState?: GameState;
+  createdAt: string;
+  updatedAt: string;
+  processedActionIds: string[];
+}
+
+interface PersistedData {
+  sessions: SessionRecord[];
+  rooms: RoomRecord[];
+}
+
+type SocketData = { playerId?: string; sessionToken?: string };
+
+const app = express();
+const httpServer = createServer(app);
+const allowedOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+const port = Number(process.env.PORT ?? 8787);
+const reconnectGraceMs = Number(process.env.RECONNECT_GRACE_MS ?? 60_000);
+const dataFile = process.env.ROOM_DATA_FILE ?? join(dirname(fileURLToPath(import.meta.url)), 'data', 'rooms.json');
+
+const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(httpServer, {
+  cors: { origin: allowedOrigin, credentials: true },
+});
+
+const sessions = new Map<string, SessionRecord>();
+const rooms = new Map<string, RoomRecord>();
+const reconnectTimers = new Map<string, NodeJS.Timeout>();
+
+const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(12)
+  .transform((value) => value.replace(/[\u0000-\u001f\u007f]/g, '').trim())
+  .pipe(z.string().min(1).max(12));
+const maxPlayersSchema = z.union([z.literal(2), z.literal(3), z.literal(4)]);
+const roomCodeSchema = z.string().trim().min(4).max(8).transform((value) => value.toUpperCase());
+
+const now = () => new Date().toISOString();
+const makeId = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`;
+const makeCode = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let index = 0; index < 5; index += 1) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
+};
+const error = (code: string, message: string): ServerErrorPayload => ({ code, message });
+
+const toRoomPayload = (room: RoomRecord): RoomPayload => ({
+  id: room.id,
+  code: room.code,
+  hostPlayerId: room.hostPlayerId,
+  status: room.status,
+  maxPlayers: room.maxPlayers,
+  players: room.players,
+  gameState: room.gameState,
+  createdAt: room.createdAt,
+  updatedAt: room.updatedAt,
+});
+
+async function persist() {
+  await mkdir(dirname(dataFile), { recursive: true });
+  const payload: PersistedData = {
+    sessions: [...sessions.values()],
+    rooms: [...rooms.values()].filter((room) => room.status !== 'closed'),
+  };
+  await writeFile(dataFile, JSON.stringify(payload, null, 2));
+}
+
+async function loadPersistedData() {
+  try {
+    const raw = await readFile(dataFile, 'utf8');
+    const payload = JSON.parse(raw) as PersistedData;
+    payload.sessions?.forEach((session) => sessions.set(session.sessionToken, session));
+    payload.rooms?.forEach((room) => rooms.set(room.id, room));
+  } catch {
+    await persist();
+  }
+}
+
+function findRoomByPlayer(playerId: string) {
+  return [...rooms.values()].find(
+    (room) => room.status !== 'closed' && room.players.some((player) => player.playerId === playerId),
+  );
+}
+
+function findRoomByCode(code: string) {
+  return [...rooms.values()].find((room) => room.code === code && room.status !== 'closed');
+}
+
+function broadcastRoom(room: RoomRecord) {
+  io.to(room.id).emit('room:update', toRoomPayload(room));
+}
+
+function touchRoom(room: RoomRecord) {
+  room.updatedAt = now();
+}
+
+function requireSession(socket: { data: SocketData }) {
+  if (!socket.data.sessionToken) return undefined;
+  return sessions.get(socket.data.sessionToken);
+}
+
+function setPlayerConnection(playerId: string, connectionState: ConnectionState) {
+  const room = findRoomByPlayer(playerId);
+  const player = room?.players.find((item) => item.playerId === playerId);
+  if (!room || !player) return;
+  player.connectionState = connectionState;
+  touchRoom(room);
+  broadcastRoom(room);
+  void persist();
+}
+
+function ensureHost(room: RoomRecord, playerId: string) {
+  return room.hostPlayerId === playerId;
+}
+
+function ensureLobby(room: RoomRecord) {
+  return room.status === 'lobby';
+}
+
+function closeRoomIfEmpty(room: RoomRecord) {
+  if (room.players.every((player) => player.connectionState === 'offline')) {
+    room.status = 'closed';
+    io.to(room.id).emit('room:closed', { message: '房间内已无在线玩家，房间已关闭。' });
+  }
+}
+
+app.use(cors({ origin: allowedOrigin, credentials: true }));
+app.use(express.json());
+app.get('/health', (_request, response) => {
+  response.json({ ok: true, rooms: rooms.size, time: now() });
+});
+
+io.on('connection', (socket) => {
+  socket.on('session:restore', async (payload, reply) => {
+    const nameResult = displayNameSchema.safeParse(payload.displayName ?? '旅人');
+    const displayName = nameResult.success ? nameResult.data : '旅人';
+    let session = payload.sessionToken ? sessions.get(payload.sessionToken) : undefined;
+
+    if (!session) {
+      session = {
+        playerId: makeId('player'),
+        displayName,
+        sessionToken: makeId('session'),
+        lastSeenAt: now(),
+      };
+      sessions.set(session.sessionToken, session);
+    }
+
+    session.displayName = displayName || session.displayName;
+    session.socketId = socket.id;
+    session.lastSeenAt = now();
+    socket.data.playerId = session.playerId;
+    socket.data.sessionToken = session.sessionToken;
+
+    const reconnectTimer = reconnectTimers.get(session.playerId);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimers.delete(session.playerId);
+    }
+
+    const room = findRoomByPlayer(session.playerId);
+    if (room) {
+      await socket.join(room.id);
+      const roomPlayer = room.players.find((player) => player.playerId === session!.playerId);
+      if (roomPlayer) {
+        roomPlayer.displayName = session.displayName;
+        roomPlayer.connectionState = 'online';
+        touchRoom(room);
+        broadcastRoom(room);
+      }
+    }
+
+    await persist();
+    reply({ session, room: room ? toRoomPayload(room) : undefined });
+  });
+
+  socket.on('room:create', async (payload, reply) => {
+    const session = requireSession(socket);
+    if (!session) return reply({ error: error('UNAUTHORIZED', '请先设置昵称并建立游客身份') });
+
+    const maxPlayersResult = maxPlayersSchema.safeParse(payload.maxPlayers);
+    if (!maxPlayersResult.success) return reply({ error: error('BAD_REQUEST', '房间人数必须是 2、3 或 4') });
+
+    const existingRoom = findRoomByPlayer(session.playerId);
+    if (existingRoom) existingRoom.players = existingRoom.players.filter((player) => player.playerId !== session.playerId);
+
+    let code = makeCode();
+    while (findRoomByCode(code)) code = makeCode();
+
+    const createdAt = now();
+    const room: RoomRecord = {
+      id: makeId('room'),
+      code,
+      hostPlayerId: session.playerId,
+      status: 'lobby',
+      maxPlayers: maxPlayersResult.data,
+      players: [
+        {
+          playerId: session.playerId,
+          displayName: session.displayName,
+          seat: 1,
+          isHost: true,
+          isReady: true,
+          connectionState: 'online',
+        },
+      ],
+      createdAt,
+      updatedAt: createdAt,
+      processedActionIds: [],
+    };
+
+    rooms.set(room.id, room);
+    await socket.join(room.id);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('room:join', async (payload, reply) => {
+    const session = requireSession(socket);
+    if (!session) return reply({ error: error('UNAUTHORIZED', '请先设置昵称并建立游客身份') });
+
+    const codeResult = roomCodeSchema.safeParse(payload.code);
+    if (!codeResult.success) return reply({ error: error('BAD_REQUEST', '请输入有效房间码') });
+
+    const room = findRoomByCode(codeResult.data);
+    if (!room) return reply({ error: error('NOT_FOUND', '找不到这个房间') });
+    if (room.status !== 'lobby') return reply({ error: error('ROOM_LOCKED', '对局已开始，不能加入新玩家') });
+
+    const existingPlayer = room.players.find((player) => player.playerId === session.playerId);
+    if (!existingPlayer) {
+      if (room.players.length >= room.maxPlayers) return reply({ error: error('ROOM_FULL', '房间人数已满') });
+      room.players.push({
+        playerId: session.playerId,
+        displayName: session.displayName,
+        seat: room.players.length + 1,
+        isHost: false,
+        isReady: false,
+        connectionState: 'online',
+      });
+    } else {
+      existingPlayer.displayName = session.displayName;
+      existingPlayer.connectionState = 'online';
+    }
+
+    touchRoom(room);
+    await socket.join(room.id);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('room:ready', async (payload, reply) => {
+    const session = requireSession(socket);
+    const room = session ? findRoomByPlayer(session.playerId) : undefined;
+    const player = room?.players.find((item) => item.playerId === session?.playerId);
+    if (!session || !room || !player) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
+    if (!ensureLobby(room)) return reply({ error: error('ROOM_LOCKED', '对局已经开始') });
+
+    player.isReady = Boolean(payload.isReady);
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('room:start', async (_payload, reply) => {
+    const session = requireSession(socket);
+    const room = session ? findRoomByPlayer(session.playerId) : undefined;
+    if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
+    if (!ensureHost(room, session.playerId)) return reply({ error: error('FORBIDDEN', '只有房主可以开始游戏') });
+    if (!ensureLobby(room)) return reply({ error: error('ROOM_LOCKED', '对局已经开始') });
+    if (room.players.length < 2) return reply({ error: error('NEED_PLAYERS', '至少需要 2 名玩家') });
+    if (!room.players.every((player) => player.isReady)) return reply({ error: error('NOT_READY', '还有玩家未准备') });
+
+    room.status = 'playing';
+    room.gameState = createGame(room.players.map((player) => player.displayName));
+    room.gameState.players = room.gameState.players.map((player, index) => ({
+      ...player,
+      id: room.players[index].playerId,
+      name: room.players[index].displayName,
+    }));
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('game:action', async (payload, reply) => {
+    const session = requireSession(socket);
+    const room = session ? findRoomByPlayer(session.playerId) : undefined;
+    if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
+    if (room.status !== 'playing' || !room.gameState) return reply({ error: error('NOT_PLAYING', '对局尚未开始') });
+
+    if (payload.actionId && room.processedActionIds.includes(payload.actionId)) {
+      return reply({ room: toRoomPayload(room) });
+    }
+
+    const result = applyGameAction(room.gameState, session.playerId, payload.action as GameAction);
+    if (!result.ok) return reply({ error: error('INVALID_ACTION', result.error ?? '行动无效') });
+
+    room.gameState = result.state;
+    if (room.gameState.phase === 'gameOver') room.status = 'finished';
+    if (payload.actionId) room.processedActionIds = [payload.actionId, ...room.processedActionIds].slice(0, 200);
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('room:restart', async (_payload, reply) => {
+    const session = requireSession(socket);
+    const room = session ? findRoomByPlayer(session.playerId) : undefined;
+    if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
+    if (!ensureHost(room, session.playerId)) return reply({ error: error('FORBIDDEN', '只有房主可以再来一局') });
+
+    room.status = 'lobby';
+    room.gameState = undefined;
+    room.processedActionIds = [];
+    room.players = room.players.map((player, index) => ({
+      ...player,
+      seat: index + 1,
+      isReady: player.playerId === room.hostPlayerId,
+    }));
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+    reply({ room: toRoomPayload(room) });
+  });
+
+  socket.on('room:leave', async (_payload, reply) => {
+    const session = requireSession(socket);
+    const room = session ? findRoomByPlayer(session.playerId) : undefined;
+    if (!session || !room) return reply({ ok: false, error: error('NOT_IN_ROOM', '你还不在房间内') });
+
+    room.players = room.players.filter((player) => player.playerId !== session.playerId);
+    if (room.players.length === 0) {
+      room.status = 'closed';
+      rooms.delete(room.id);
+    } else if (room.hostPlayerId === session.playerId) {
+      room.hostPlayerId = room.players[0].playerId;
+      room.players = room.players.map((player, index) => ({
+        ...player,
+        seat: index + 1,
+        isHost: player.playerId === room.hostPlayerId,
+      }));
+    }
+
+    await socket.leave(room.id);
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+    reply({ ok: true });
+  });
+
+  socket.on('disconnect', () => {
+    const session = requireSession(socket);
+    if (!session) return;
+    session.socketId = undefined;
+    session.lastSeenAt = now();
+    setPlayerConnection(session.playerId, 'reconnecting');
+
+    const timer = setTimeout(() => {
+      setPlayerConnection(session.playerId, 'offline');
+      const room = findRoomByPlayer(session.playerId);
+      if (room) {
+        closeRoomIfEmpty(room);
+        void persist();
+      }
+    }, reconnectGraceMs);
+    reconnectTimers.set(session.playerId, timer);
+    void persist();
+  });
+});
+
+await loadPersistedData();
+httpServer.listen(port, () => {
+  console.log(`Property Merchant online server listening on http://localhost:${port}`);
+});
