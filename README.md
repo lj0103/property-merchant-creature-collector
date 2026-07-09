@@ -6,7 +6,7 @@
 
 已完成一个可以实际运行的多人在线版本：玩家可在不同浏览器/设备中连接同一台服务端，通过房间码加入同一房间，准备后开始游戏，并由服务端统一校验和广播所有游戏行动。
 
-生产级账号、PostgreSQL、Redis、部署流水线仍属于后续生产化阶段；当前在线版使用游客身份 + 本地 JSON 快照持久化，适合开发、内网联机、云服务器单实例部署验证。
+当前在线版使用游客身份，支持两种持久化方式：默认本地 JSON 快照；配置 `DATABASE_URL` 后自动切换为 Prisma + PostgreSQL。Redis、正式账号、HTTPS Cookie、部署流水线仍属于后续生产化阶段。
 
 ## 启动方式
 
@@ -47,6 +47,17 @@ npm run dev
 VITE_SOCKET_URL=http://你的服务端地址:8787
 CLIENT_ORIGIN=http://你的前端地址:5173
 ```
+
+数据库模式：
+
+```bash
+cp .env.example .env
+npm run db:generate
+npm run db:deploy
+npm run dev:online
+```
+
+没有配置 `DATABASE_URL` 时，服务端会自动退回 JSON 文件存储，默认路径为 `server/data/rooms.json`。
 
 构建与测试：
 
@@ -138,6 +149,29 @@ npm test
 - README 标注每个阶段的功能范围、主要代码和验收结果。
 - 新增真实多人在线完整开发规格文档：[ONLINE_MULTIPLAYER_SPEC.md](./ONLINE_MULTIPLAYER_SPEC.md)。
 
+### 阶段 6：PostgreSQL + Prisma 持久化（已完成）
+
+开发内容：
+
+- 新增 `prisma/schema.prisma`，定义游客会话和房间快照表。
+- 新增 `prisma/migrations/20260709122000_init/migration.sql`，用于生产环境迁移。
+- 新增 `server/storage.ts`，将持久化层抽象为 JSON / Prisma 两种 driver。
+- 服务端启动时自动判断：有 `DATABASE_URL` 且未设置 `STORAGE_DRIVER=json` 时使用 Prisma；否则使用 JSON。
+- `/health` 返回当前存储 driver，便于部署后确认运行模式。
+- 新增 `.env.example`，标注前端、服务端和数据库环境变量。
+
+主要代码：
+
+- `server/storage.ts`
+- `prisma/schema.prisma`
+- `prisma/migrations/20260709122000_init/migration.sql`
+
+验收结果：
+
+- `npm run db:generate` 通过。
+- `npm test` 通过。
+- `npm run build` 通过。
+
 ## 游戏规则
 
 每回合选择一项行动：获取三种不同基础能量、在公共池至少有四枚时获取两枚同种能量、预定一张公开精灵卡，或捕捉一张公开/已预定的精灵卡。
@@ -155,6 +189,7 @@ npm test
 - Vite + React + TypeScript
 - Zustand：本地同屏状态管理与持久化
 - Express + Socket.IO：多人在线房间服务
+- Prisma + PostgreSQL：生产数据库持久化
 - Zod：服务端输入校验
 - `src/game`：初始化、规则、计分、行动执行等纯逻辑
 - `src/multiplayer`：前后端共享联机协议类型
@@ -167,20 +202,19 @@ npm test
 已经支持真实跨设备联机，但当前实现是“单服务端实例”版本：
 
 - 适合本机、局域网或单台云服务器部署。
-- 房间快照持久化到 JSON 文件。
+- 默认房间快照持久化到 JSON 文件；配置 `DATABASE_URL` 后使用 PostgreSQL。
 - 游客 token 存在浏览器 localStorage 中。
-- 尚未接入 PostgreSQL/Redis/正式账号体系/HTTPS Cookie。
+- 尚未接入 Redis/正式账号体系/HTTPS Cookie。
 - 多实例横向扩容前，需要按 `ONLINE_MULTIPLAYER_SPEC.md` 替换持久化层和在线状态层。
 
 ## 后续生产化阶段
 
 建议按以下顺序继续：
 
-1. 用 PostgreSQL + Prisma 替换 JSON 快照。
-2. 用 Redis 管理在线状态、房间锁和 Socket.IO adapter。
-3. 将游客 token 改为 `HttpOnly + Secure + SameSite` Cookie。
-4. 增加服务端集成测试和多客户端端到端测试。
-5. 增加部署配置、日志、监控、限流和房间清理任务。
-6. 部署前端静态站点与独立 WebSocket 服务。
+1. 用 Redis 管理在线状态、房间锁和 Socket.IO adapter。
+2. 将游客 token 改为 `HttpOnly + Secure + SameSite` Cookie。
+3. 增加服务端集成测试和多客户端端到端测试。
+4. 增加部署配置、日志、监控、限流和房间清理任务。
+5. 部署前端静态站点与独立 WebSocket 服务。
 
 本项目中的名称、视觉符号与文案均为原创，不使用任何第三方角色 IP 素材。

@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GuestSession {
+  sessionToken String   @id
+  playerId     String   @unique
+  displayName  String
+  socketId     String?
+  lastSeenAt   DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Room {
+  id                 String   @id
+  code               String   @unique
+  hostPlayerId       String
+  status             String
+  maxPlayers         Int
+  players            Json
+  gameState          Json?
+  processedActionIds Json
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([code])
+  @@index([hostPlayerId])
+  @@index([status])
+}

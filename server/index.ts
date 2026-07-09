@@ -1,47 +1,18 @@
 import cors from 'cors';
 import express from 'express';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { z } from 'zod';
 import { applyGameAction, type GameAction } from '../src/game/actions';
 import { createGame } from '../src/game/setup';
-import type { GameState } from '../src/game/types';
 import type {
   ClientToServerEvents,
   ConnectionState,
   RoomPayload,
-  RoomPlayerPayload,
-  RoomStatus,
   ServerErrorPayload,
   ServerToClientEvents,
-  SessionPayload,
 } from '../src/multiplayer/protocol';
-
-interface SessionRecord extends SessionPayload {
-  socketId?: string;
-  lastSeenAt: string;
-}
-
-interface RoomRecord {
-  id: string;
-  code: string;
-  hostPlayerId: string;
-  status: RoomStatus;
-  maxPlayers: 2 | 3 | 4;
-  players: RoomPlayerPayload[];
-  gameState?: GameState;
-  createdAt: string;
-  updatedAt: string;
-  processedActionIds: string[];
-}
-
-interface PersistedData {
-  sessions: SessionRecord[];
-  rooms: RoomRecord[];
-}
+import { createRoomStorage, type RoomRecord, type SessionRecord } from './storage';
 
 type SocketData = { playerId?: string; sessionToken?: string };
 
@@ -50,7 +21,7 @@ const httpServer = createServer(app);
 const allowedOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 const port = Number(process.env.PORT ?? 8787);
 const reconnectGraceMs = Number(process.env.RECONNECT_GRACE_MS ?? 60_000);
-const dataFile = process.env.ROOM_DATA_FILE ?? join(dirname(fileURLToPath(import.meta.url)), 'data', 'rooms.json');
+const storage = createRoomStorage();
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(httpServer, {
   cors: { origin: allowedOrigin, credentials: true },
@@ -93,23 +64,16 @@ const toRoomPayload = (room: RoomRecord): RoomPayload => ({
 });
 
 async function persist() {
-  await mkdir(dirname(dataFile), { recursive: true });
-  const payload: PersistedData = {
+  await storage.save({
     sessions: [...sessions.values()],
     rooms: [...rooms.values()].filter((room) => room.status !== 'closed'),
-  };
-  await writeFile(dataFile, JSON.stringify(payload, null, 2));
+  });
 }
 
 async function loadPersistedData() {
-  try {
-    const raw = await readFile(dataFile, 'utf8');
-    const payload = JSON.parse(raw) as PersistedData;
-    payload.sessions?.forEach((session) => sessions.set(session.sessionToken, session));
-    payload.rooms?.forEach((room) => rooms.set(room.id, room));
-  } catch {
-    await persist();
-  }
+  const payload = await storage.load();
+  payload.sessions?.forEach((session) => sessions.set(session.sessionToken, session));
+  payload.rooms?.forEach((room) => rooms.set(room.id, room));
 }
 
 function findRoomByPlayer(playerId: string) {
@@ -163,7 +127,7 @@ function closeRoomIfEmpty(room: RoomRecord) {
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json());
 app.get('/health', (_request, response) => {
-  response.json({ ok: true, rooms: rooms.size, time: now() });
+  response.json({ ok: true, storage: storage.driver, rooms: rooms.size, time: now() });
 });
 
 io.on('connection', (socket) => {
