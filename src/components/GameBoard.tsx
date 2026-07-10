@@ -4,6 +4,7 @@ import { ENERGY_ICONS, ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import { useGameStore } from '../store/gameStore';
 import { CreatureCard } from './CreatureCard';
+import { GemLog, GemRequirements } from './GemDisplay';
 
 export function GameBoard() {
   const state = useGameStore();
@@ -37,7 +38,7 @@ export function GameBoard() {
             <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}宝石</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能宝石</span><b>{state.energyPool.wild}</b></div></div>
             <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同色宝石 ×2' : '拿取所选宝石'}</button>
             <button className="text-btn" onClick={() => setSelected([])}>放回选择</button>
-            <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{state.availableBadges.map((badge) => <div className="badge" key={badge.id}><i>✧</i><p><strong>{badge.name} <em>+{badge.points}</em></strong><small>{Object.entries(badge.requirement).map(([type, count]) => `${ENERGY_LABELS[type as TokenType]} ${count}`).join(' · ')}</small></p></div>)}</div>
+            <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{state.availableBadges.map((badge) => <div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
           </aside>
           <section className="market">
             <div className="market-title"><div><p className="eyebrow">中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>牌库余量 · {[3, 2, 1].map((level) => `L${level} ${state.decks[level as 1 | 2 | 3].length}`).join(' / ')}</p></div>
@@ -51,7 +52,7 @@ export function GameBoard() {
             <h3 className="section-label">永久羁绊</h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>
             <h3 className="section-label">预定区 <span>{player.reservedCards.length}/3</span></h3>
             <div className="reserved">{player.reservedCards.length ? player.reservedCards.map((card) => <CreatureCard card={card} player={player} source="reserved" key={card.id}/>) : <p>尚未压下任何预定牌</p>}</div>
-            <h3 className="section-label">桌边旅记</h3><div className="log">{state.log.slice(0, 6).map((entry) => <p key={entry.id}>{entry.message}</p>)}</div>
+            <h3 className="section-label">桌边旅记</h3><div className="log">{state.log.slice(0, 6).map((entry) => <p key={entry.id}><GemLog message={entry.message}/></p>)}</div>
           </aside>
         </div>
       </div>

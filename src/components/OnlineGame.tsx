@@ -6,6 +6,7 @@ import { ENERGY_TYPES, type EnergyType, type TokenType } from '../game/types';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import type { ClientToServerEvents, RoomPayload, ServerToClientEvents, SessionPayload } from '../multiplayer/protocol';
 import { CreatureCard } from './CreatureCard';
+import { GemLog, GemRequirements } from './GemDisplay';
 
 const sessionKey = 'property-merchant-online-session';
 const apiUrl = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8787';
@@ -223,7 +224,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
           <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}宝石</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能宝石</span><b>{game.energyPool.wild}</b></div></div>
           <button className="primary" disabled={!isMyTurn||!validEnergySelection||game.phase!=='playing'} onClick={()=>sendAction({type:'takeEnergies',energies:selected.length===1?[selected[0],selected[0]]:selected})}>{selected.length===1?'拿取同色宝石 ×2':'拿取所选宝石'}</button>
           <button className="text-btn" onClick={()=>setSelected([])}>清空选择</button>
-          <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{game.availableBadges.map((badge)=><div className="badge" key={badge.id}><i>✧</i><p><strong>{badge.name} <em>+{badge.points}</em></strong><small>{Object.entries(badge.requirement).map(([energy,count])=>`${ENERGY_LABELS[energy as TokenType]} ${count}`).join(' · ')}</small></p></div>)}</div>
+          <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{game.availableBadges.map((badge)=><div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
         </aside>
         <section className="market">
           <div className="market-title"><div><p className="eyebrow">服务器同步 · 中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>牌库余量 · {[3,2,1].map((level)=>`L${level} ${game.decks[level as 1|2|3].length}`).join(' / ')}</p></div>
@@ -239,7 +240,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
             <h3 className="section-label">预定精灵 <span>{activePlayer.reservedCards.length}/3</span></h3>
             <div className="reserved">{activePlayer.reservedCards.length?activePlayer.reservedCards.map((card)=><CreatureCard card={card} player={activePlayer} source="reserved" disabled={!isMyTurn} phase={game.phase} onCapture={(cardId,source)=>sendAction({type:'captureCard',cardId,source})} key={card.id}/>):<p>尚未预定精灵</p>}</div>
           </>}
-          <h3 className="section-label">近期旅记</h3><div className="log">{game.log.slice(0,6).map((entry)=><p key={entry.id}>{entry.message}</p>)}</div>
+          <h3 className="section-label">近期旅记</h3><div className="log">{game.log.slice(0,6).map((entry)=><p key={entry.id}><GemLog message={entry.message}/></p>)}</div>
         </aside>
       </div>
       </div>

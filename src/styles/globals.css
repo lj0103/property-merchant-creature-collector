@@ -366,20 +366,20 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 .energy:disabled { opacity: .45; }
 .left-panel>.primary { margin-top: 13px; }
 
-.flame, .element-flame { --color: #cc5b45; }
-.aqua, .element-aqua { --color: #348eb5; }
-.leaf, .element-leaf { --color: #3c9363; }
-.spark, .element-spark { --color: #c99527; }
-.mind, .element-mind { --color: #805ba7; }
-.wild { --color: #b78b3d; }
+.flame, .element-flame { --color: #dc4f5f; --gem-clip: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+.aqua, .element-aqua { --color: #28aeda; --gem-clip: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+.leaf, .element-leaf { --color: #25bfa0; --gem-clip: polygon(50% 0, 75% 25%, 94% 57%, 88% 78%, 70% 96%, 50% 100%, 30% 96%, 12% 78%, 6% 57%, 25% 25%); }
+.spark, .element-spark { --color: #f0ae28; --gem-clip: polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%); }
+.mind, .element-mind { --color: #895ec6; --gem-clip: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.wild { --color: #d0a037; --gem-clip: circle(50% at 50% 50%); }
 
 .badges { margin-top: 10px; padding-top: 13px; border-top: 1px solid #f0d17b20; }
 .badge { display: flex; align-items: center; gap: 9px; padding: 9px 0; border-bottom: 1px dashed #ffffff13; }
 .badge>i { width: 32px; height: 32px; display: grid; place-items: center; color: #f3d383; border: 1px solid #cba85c; border-radius: 50%; background: #594222; font-size: 19px; box-shadow: inset 0 0 0 3px #2c2112; }
-.badge p { margin: 0; }
+.badge-copy { min-width: 0; display: grid; gap: 3px; }
 .badge strong { font-size: 10px; }
 .badge em { color: #efc96f; font-style: normal; }
-.badge small { display: block; color: #948875; font-size: 8px; }
+.badge-requirements { display: flex; align-items: center; gap: 3px; }
 
 .market { min-width: 0; padding: 17px; color: var(--ink); border: 2px solid #bda060; border-radius: 18px; background: linear-gradient(90deg, #eaddbd, #f6edd8 48%, #e7d8b5); box-shadow: inset 0 0 30px #7a582c2d, 0 12px 20px #061b1666; }
 .market-title { display: flex; justify-content: space-between; align-items: end; padding: 0 7px 13px; border-bottom: 1px solid #b49b6c; }
@@ -511,7 +511,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   height: 36px;
   border: 0;
   border-radius: 0;
-  clip-path: polygon(50% 0, 84% 14%, 100% 52%, 72% 100%, 28% 100%, 0 52%, 16% 14%);
+  clip-path: var(--gem-clip);
   background:
     linear-gradient(135deg, #ffffffaa 0 10%, transparent 11% 48%, #ffffff35 49% 54%, transparent 55%),
     conic-gradient(from 25deg at 50% 45%,
@@ -523,13 +523,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   box-shadow: inset 0 0 0 2px #ffffff45, inset 0 -9px 14px #0005;
   text-shadow: 0 2px 5px #000b;
 }
+.energy.flame i { width: 38px; height: 38px; }
+.energy.aqua i { width: 40px; height: 36px; }
+.energy.leaf i { width: 34px; height: 40px; }
+.energy.spark i { width: 33px; height: 40px; }
+.energy.mind i { width: 36px; height: 36px; }
+.energy.wild i { width: 36px; height: 36px; }
 
 .wallet .token,
 .discounts span,
 .token.mini {
   border: 0;
   border-radius: 0;
-  clip-path: polygon(50% 0, 86% 16%, 100% 52%, 74% 100%, 26% 100%, 0 52%, 14% 16%);
+  clip-path: var(--gem-clip);
   background:
     linear-gradient(140deg, #ffffff8a 0 12%, transparent 13% 50%, #ffffff26 51% 56%, transparent 57%),
     conic-gradient(from 15deg at 50% 45%,
@@ -555,6 +561,30 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 .wallet .token b { font-size: 15px; }
 .discounts span { min-width: 42px; height: 34px; display: inline-grid; place-items: center; padding: 4px 7px; }
 .token.mini { min-width: 31px; min-height: 20px; padding: 4px 7px; }
+.gem-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex: 0 0 auto;
+  color: #fffbed;
+  clip-path: var(--gem-clip);
+  background:
+    linear-gradient(140deg, #ffffffa0 0 12%, transparent 13% 48%, #ffffff38 49% 56%, transparent 57%),
+    conic-gradient(from 15deg at 50% 45%,
+      color-mix(in srgb, var(--color), white 42%),
+      color-mix(in srgb, var(--color), black 12%),
+      color-mix(in srgb, var(--color), white 12%),
+      color-mix(in srgb, var(--color), black 35%),
+      color-mix(in srgb, var(--color), white 35%));
+  text-shadow: 0 1px 2px #000c;
+  box-shadow: inset 0 0 0 1px #ffffff55;
+  vertical-align: middle;
+}
+.gem-icon i { font-style: normal; font-size: .85em; }
+.gem-icon b { font-size: .8em; }
+.gem-small { width: 28px; height: 24px; font-size: 9px; }
+.gem-inline { width: 16px; height: 15px; margin: 0 2px; font-size: 7px; vertical-align: -3px; }
 .badge>i {
   border: 0;
   border-radius: 0;
@@ -617,7 +647,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .layout {
     height: calc(100% - 42px);
     min-height: 0;
-    grid-template-columns: 176px minmax(0, 1fr) 225px;
+    grid-template-columns: clamp(176px, 11.5vw, 220px) minmax(0, 1fr) clamp(225px, 14.5vw, 280px);
     gap: 8px;
     align-items: stretch;
   }
@@ -656,9 +686,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .badges .panel-heading { grid-column: 1 / -1; }
   .badge { min-width: 0; gap: 4px; padding: 3px 0; }
   .badge>i { width: 23px; height: 23px; flex: 0 0 23px; font-size: 12px; }
-  .badge p { min-width: 0; }
+  .badge-copy { min-width: 0; gap: 1px; }
   .badge strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; }
-  .badge small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 6px; }
+  .badge-requirements { gap: 2px; }
+  .gem-small { width: 22px; height: 19px; font-size: 7px; }
 
   .market {
     height: 100%;
@@ -741,4 +772,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .creature-art { height: 29px; }
   .creature-art small { display: none; }
   .card-actions button { padding: 2px; }
+}
+
+@media (min-width: 1600px) and (min-height: 900px) {
+  .badge strong { font-size: 9px; }
+  .gem-small { width: 27px; height: 23px; font-size: 8px; }
+  .log p { font-size: 8px; }
+  .gem-inline { width: 18px; height: 17px; font-size: 8px; }
 }
