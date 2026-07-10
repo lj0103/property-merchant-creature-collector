@@ -6,7 +6,7 @@
 
 已完成一个可以实际运行的多人在线版本：玩家可在不同浏览器/设备中连接同一台服务端，通过房间码加入同一房间，准备后开始游戏，并由服务端统一校验和广播所有游戏行动。
 
-当前在线版使用游客身份，支持两种持久化方式：默认本地 JSON 快照；配置 `DATABASE_URL` 后自动切换为 Prisma + PostgreSQL。Redis、正式账号、HTTPS Cookie、部署流水线仍属于后续生产化阶段。
+当前在线版使用游客身份，支持两种持久化方式：默认本地 JSON 快照；配置 `DATABASE_URL` 后自动切换为 Prisma + PostgreSQL。配置 `REDIS_URL` 后会启用跨实例 Socket.IO 广播、房间分布式锁和在线状态记录。正式账号、HTTPS Cookie 与部署流水线仍属于后续生产化阶段。
 
 ## 启动方式
 
@@ -58,6 +58,14 @@ npm run dev:online
 ```
 
 没有配置 `DATABASE_URL` 时，服务端会自动退回 JSON 文件存储，默认路径为 `server/data/rooms.json`。
+
+Redis 协调模式（可选）：
+
+```bash
+REDIS_URL=redis://localhost:6379 npm run dev:online
+```
+
+没有配置 `REDIS_URL`，或启动时无法连接 Redis，服务端会自动退回进程内协调模式。访问 `/health` 可查看当前的 `storage` 与 `realtime` driver。
 
 构建与测试：
 
@@ -172,6 +180,36 @@ npm test
 - `npm test` 通过。
 - `npm run build` 通过。
 
+### 阶段 7：Redis 实时协调与房间并发控制（已完成）
+
+开发内容：
+
+- 新增 `server/realtime.ts`，封装 Redis / 内存两种实时协调 driver。
+- 配置 `REDIS_URL` 后启用 Socket.IO Redis adapter，使房间事件可跨服务端实例广播。
+- 为加入、准备、开局、游戏行动、重开、离开和断线状态更新增加房间级串行锁。
+- Redis 模式使用带随机令牌和过期时间的分布式锁，并用 Lua 脚本安全释放锁。
+- 记录玩家 `online`、`reconnecting`、`offline` 状态，并设置在线状态 TTL。
+- 各服务端实例通过内部 `room:sync` 事件同步房间快照缓存。
+- Redis 缺失或连接失败时自动使用进程内队列锁，不影响单机开发和单实例部署。
+- `/health` 新增 `realtime` 字段，可确认当前运行在 `redis` 或 `memory` 模式。
+
+环境变量：
+
+- `REDIS_URL`：Redis 连接地址。
+- `REDIS_LOCK_TTL_MS`：房间分布式锁过期时间，默认 `5000`。
+- `REDIS_PRESENCE_TTL_SECONDS`：在线状态过期时间，默认 `120`。
+
+主要代码：
+
+- `server/realtime.ts`
+- `server/index.ts`
+
+验收结果：
+
+- `npm test` 通过。
+- `npm run build` 通过。
+- 无 Redis 环境下服务端可正常启动，`/health` 返回 `"realtime":"memory"`。
+
 ## 游戏规则
 
 每回合选择一项行动：获取三种不同基础能量、在公共池至少有四枚时获取两枚同种能量、预定一张公开精灵卡，或捕捉一张公开/已预定的精灵卡。
@@ -190,6 +228,7 @@ npm test
 - Zustand：本地同屏状态管理与持久化
 - Express + Socket.IO：多人在线房间服务
 - Prisma + PostgreSQL：生产数据库持久化
+- Redis：跨实例事件广播、在线状态与房间分布式锁
 - Zod：服务端输入校验
 - `src/game`：初始化、规则、计分、行动执行等纯逻辑
 - `src/multiplayer`：前后端共享联机协议类型
@@ -199,22 +238,22 @@ npm test
 
 ## 当前在线版能力边界
 
-已经支持真实跨设备联机，但当前实现是“单服务端实例”版本：
+已经支持真实跨设备联机，并已具备 Redis 多实例协调基础：
 
-- 适合本机、局域网或单台云服务器部署。
+- 不配置 Redis 时适合本机、局域网或单台云服务器部署。
 - 默认房间快照持久化到 JSON 文件；配置 `DATABASE_URL` 后使用 PostgreSQL。
+- 配置 Redis 后可跨实例广播事件、同步房间缓存并串行处理同一房间操作。
 - 游客 token 存在浏览器 localStorage 中。
-- 尚未接入 Redis/正式账号体系/HTTPS Cookie。
-- 多实例横向扩容前，需要按 `ONLINE_MULTIPLAYER_SPEC.md` 替换持久化层和在线状态层。
+- 尚未接入正式账号体系和 HTTPS Cookie。
+- 正式多实例部署应同时使用 PostgreSQL + Redis，并在负载均衡器启用 WebSocket 与会话粘滞；后续仍需把游客会话查询改为共享缓存或数据库按需读取。
 
 ## 后续生产化阶段
 
 建议按以下顺序继续：
 
-1. 用 Redis 管理在线状态、房间锁和 Socket.IO adapter。
-2. 将游客 token 改为 `HttpOnly + Secure + SameSite` Cookie。
-3. 增加服务端集成测试和多客户端端到端测试。
-4. 增加部署配置、日志、监控、限流和房间清理任务。
-5. 部署前端静态站点与独立 WebSocket 服务。
+1. 将游客 token 改为 `HttpOnly + Secure + SameSite` Cookie，并支持共享会话查询。
+2. 增加服务端集成测试和多客户端端到端测试。
+3. 增加部署配置、日志、监控、限流和房间清理任务。
+4. 部署前端静态站点与独立 WebSocket 服务。
 
 本项目中的名称、视觉符号与文案均为原创，不使用任何第三方角色 IP 素材。

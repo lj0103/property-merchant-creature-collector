@@ -12,9 +12,11 @@ import type {
   ServerErrorPayload,
   ServerToClientEvents,
 } from '../src/multiplayer/protocol';
+import { createRealtimeCoordinator } from './realtime';
 import { createRoomStorage, type RoomRecord, type SessionRecord } from './storage';
 
 type SocketData = { playerId?: string; sessionToken?: string };
+type InterServerEvents = { 'room:sync': (room: RoomRecord) => void };
 
 const app = express();
 const httpServer = createServer(app);
@@ -23,9 +25,10 @@ const port = Number(process.env.PORT ?? 8787);
 const reconnectGraceMs = Number(process.env.RECONNECT_GRACE_MS ?? 60_000);
 const storage = createRoomStorage();
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(httpServer, {
+const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
   cors: { origin: allowedOrigin, credentials: true },
 });
+const realtime = await createRealtimeCoordinator(io);
 
 const sessions = new Map<string, SessionRecord>();
 const rooms = new Map<string, RoomRecord>();
@@ -88,6 +91,7 @@ function findRoomByCode(code: string) {
 
 function broadcastRoom(room: RoomRecord) {
   io.to(room.id).emit('room:update', toRoomPayload(room));
+  if (realtime.driver === 'redis') io.serverSideEmit('room:sync', structuredClone(room));
 }
 
 function touchRoom(room: RoomRecord) {
@@ -99,14 +103,22 @@ function requireSession(socket: { data: SocketData }) {
   return sessions.get(socket.data.sessionToken);
 }
 
-function setPlayerConnection(playerId: string, connectionState: ConnectionState) {
-  const room = findRoomByPlayer(playerId);
-  const player = room?.players.find((item) => item.playerId === playerId);
-  if (!room || !player) return;
-  player.connectionState = connectionState;
-  touchRoom(room);
-  broadcastRoom(room);
-  void persist();
+async function setPlayerConnection(playerId: string, connectionState: ConnectionState) {
+  await realtime.setPlayerPresence(playerId, connectionState);
+  const foundRoom = findRoomByPlayer(playerId);
+  if (!foundRoom) {
+    await persist();
+    return;
+  }
+  await realtime.withRoomLock(foundRoom.id, async () => {
+    const room = rooms.get(foundRoom.id);
+    const player = room?.players.find((item) => item.playerId === playerId);
+    if (!room || !player) return;
+    player.connectionState = connectionState;
+    touchRoom(room);
+    await persist();
+    broadcastRoom(room);
+  });
 }
 
 function ensureHost(room: RoomRecord, playerId: string) {
@@ -127,7 +139,12 @@ function closeRoomIfEmpty(room: RoomRecord) {
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json());
 app.get('/health', (_request, response) => {
-  response.json({ ok: true, storage: storage.driver, rooms: rooms.size, time: now() });
+  response.json({ ok: true, storage: storage.driver, realtime: realtime.driver, rooms: rooms.size, time: now() });
+});
+
+io.on('room:sync', (room) => {
+  if (room.status === 'closed') rooms.delete(room.id);
+  else rooms.set(room.id, room);
 });
 
 io.on('connection', (socket) => {
@@ -151,6 +168,7 @@ io.on('connection', (socket) => {
     session.lastSeenAt = now();
     socket.data.playerId = session.playerId;
     socket.data.sessionToken = session.sessionToken;
+    await realtime.setPlayerPresence(session.playerId, 'online');
 
     const reconnectTimer = reconnectTimers.get(session.playerId);
     if (reconnectTimer) {
@@ -227,27 +245,34 @@ io.on('connection', (socket) => {
     if (!room) return reply({ error: error('NOT_FOUND', '找不到这个房间') });
     if (room.status !== 'lobby') return reply({ error: error('ROOM_LOCKED', '对局已开始，不能加入新玩家') });
 
-    const existingPlayer = room.players.find((player) => player.playerId === session.playerId);
-    if (!existingPlayer) {
-      if (room.players.length >= room.maxPlayers) return reply({ error: error('ROOM_FULL', '房间人数已满') });
-      room.players.push({
-        playerId: session.playerId,
-        displayName: session.displayName,
-        seat: room.players.length + 1,
-        isHost: false,
-        isReady: false,
-        connectionState: 'online',
-      });
-    } else {
-      existingPlayer.displayName = session.displayName;
-      existingPlayer.connectionState = 'online';
-    }
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        if (room.status !== 'lobby') return reply({ error: error('ROOM_LOCKED', '对局已开始，不能加入新玩家') });
+        const existingPlayer = room.players.find((player) => player.playerId === session.playerId);
+        if (!existingPlayer) {
+          if (room.players.length >= room.maxPlayers) return reply({ error: error('ROOM_FULL', '房间人数已满') });
+          room.players.push({
+            playerId: session.playerId,
+            displayName: session.displayName,
+            seat: room.players.length + 1,
+            isHost: false,
+            isReady: false,
+            connectionState: 'online',
+          });
+        } else {
+          existingPlayer.displayName = session.displayName;
+          existingPlayer.connectionState = 'online';
+        }
 
-    touchRoom(room);
-    await socket.join(room.id);
-    await persist();
-    broadcastRoom(room);
-    reply({ room: toRoomPayload(room) });
+        touchRoom(room);
+        await socket.join(room.id);
+        await persist();
+        broadcastRoom(room);
+        reply({ room: toRoomPayload(room) });
+      });
+    } catch {
+      reply({ error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
+    }
   });
 
   socket.on('room:ready', async (payload, reply) => {
@@ -257,11 +282,17 @@ io.on('connection', (socket) => {
     if (!session || !room || !player) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
     if (!ensureLobby(room)) return reply({ error: error('ROOM_LOCKED', '对局已经开始') });
 
-    player.isReady = Boolean(payload.isReady);
-    touchRoom(room);
-    await persist();
-    broadcastRoom(room);
-    reply({ room: toRoomPayload(room) });
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        player.isReady = Boolean(payload.isReady);
+        touchRoom(room);
+        await persist();
+        broadcastRoom(room);
+        reply({ room: toRoomPayload(room) });
+      });
+    } catch {
+      reply({ error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
+    }
   });
 
   socket.on('room:start', async (_payload, reply) => {
@@ -273,17 +304,24 @@ io.on('connection', (socket) => {
     if (room.players.length < 2) return reply({ error: error('NEED_PLAYERS', '至少需要 2 名玩家') });
     if (!room.players.every((player) => player.isReady)) return reply({ error: error('NOT_READY', '还有玩家未准备') });
 
-    room.status = 'playing';
-    room.gameState = createGame(room.players.map((player) => player.displayName));
-    room.gameState.players = room.gameState.players.map((player, index) => ({
-      ...player,
-      id: room.players[index].playerId,
-      name: room.players[index].displayName,
-    }));
-    touchRoom(room);
-    await persist();
-    broadcastRoom(room);
-    reply({ room: toRoomPayload(room) });
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        if (!ensureLobby(room)) return reply({ error: error('ROOM_LOCKED', '对局已经开始') });
+        room.status = 'playing';
+        room.gameState = createGame(room.players.map((player) => player.displayName));
+        room.gameState.players = room.gameState.players.map((player, index) => ({
+          ...player,
+          id: room.players[index].playerId,
+          name: room.players[index].displayName,
+        }));
+        touchRoom(room);
+        await persist();
+        broadcastRoom(room);
+        reply({ room: toRoomPayload(room) });
+      });
+    } catch {
+      reply({ error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
+    }
   });
 
   socket.on('game:action', async (payload, reply) => {
@@ -292,20 +330,26 @@ io.on('connection', (socket) => {
     if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
     if (room.status !== 'playing' || !room.gameState) return reply({ error: error('NOT_PLAYING', '对局尚未开始') });
 
-    if (payload.actionId && room.processedActionIds.includes(payload.actionId)) {
-      return reply({ room: toRoomPayload(room) });
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        if (payload.actionId && room.processedActionIds.includes(payload.actionId)) {
+          return reply({ room: toRoomPayload(room) });
+        }
+
+        const result = applyGameAction(room.gameState!, session.playerId, payload.action as GameAction);
+        if (!result.ok) return reply({ error: error('INVALID_ACTION', result.error ?? '行动无效') });
+
+        room.gameState = result.state;
+        if (room.gameState.phase === 'gameOver') room.status = 'finished';
+        if (payload.actionId) room.processedActionIds = [payload.actionId, ...room.processedActionIds].slice(0, 200);
+        touchRoom(room);
+        await persist();
+        broadcastRoom(room);
+        reply({ room: toRoomPayload(room) });
+      });
+    } catch {
+      reply({ error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
     }
-
-    const result = applyGameAction(room.gameState, session.playerId, payload.action as GameAction);
-    if (!result.ok) return reply({ error: error('INVALID_ACTION', result.error ?? '行动无效') });
-
-    room.gameState = result.state;
-    if (room.gameState.phase === 'gameOver') room.status = 'finished';
-    if (payload.actionId) room.processedActionIds = [payload.actionId, ...room.processedActionIds].slice(0, 200);
-    touchRoom(room);
-    await persist();
-    broadcastRoom(room);
-    reply({ room: toRoomPayload(room) });
   });
 
   socket.on('room:restart', async (_payload, reply) => {
@@ -314,18 +358,24 @@ io.on('connection', (socket) => {
     if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
     if (!ensureHost(room, session.playerId)) return reply({ error: error('FORBIDDEN', '只有房主可以再来一局') });
 
-    room.status = 'lobby';
-    room.gameState = undefined;
-    room.processedActionIds = [];
-    room.players = room.players.map((player, index) => ({
-      ...player,
-      seat: index + 1,
-      isReady: player.playerId === room.hostPlayerId,
-    }));
-    touchRoom(room);
-    await persist();
-    broadcastRoom(room);
-    reply({ room: toRoomPayload(room) });
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        room.status = 'lobby';
+        room.gameState = undefined;
+        room.processedActionIds = [];
+        room.players = room.players.map((player, index) => ({
+          ...player,
+          seat: index + 1,
+          isReady: player.playerId === room.hostPlayerId,
+        }));
+        touchRoom(room);
+        await persist();
+        broadcastRoom(room);
+        reply({ room: toRoomPayload(room) });
+      });
+    } catch {
+      reply({ error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
+    }
   });
 
   socket.on('room:leave', async (_payload, reply) => {
@@ -333,24 +383,30 @@ io.on('connection', (socket) => {
     const room = session ? findRoomByPlayer(session.playerId) : undefined;
     if (!session || !room) return reply({ ok: false, error: error('NOT_IN_ROOM', '你还不在房间内') });
 
-    room.players = room.players.filter((player) => player.playerId !== session.playerId);
-    if (room.players.length === 0) {
-      room.status = 'closed';
-      rooms.delete(room.id);
-    } else if (room.hostPlayerId === session.playerId) {
-      room.hostPlayerId = room.players[0].playerId;
-      room.players = room.players.map((player, index) => ({
-        ...player,
-        seat: index + 1,
-        isHost: player.playerId === room.hostPlayerId,
-      }));
-    }
+    try {
+      await realtime.withRoomLock(room.id, async () => {
+        room.players = room.players.filter((player) => player.playerId !== session.playerId);
+        if (room.players.length === 0) {
+          room.status = 'closed';
+          rooms.delete(room.id);
+        } else if (room.hostPlayerId === session.playerId) {
+          room.hostPlayerId = room.players[0].playerId;
+          room.players = room.players.map((player, index) => ({
+            ...player,
+            seat: index + 1,
+            isHost: player.playerId === room.hostPlayerId,
+          }));
+        }
 
-    await socket.leave(room.id);
-    touchRoom(room);
-    await persist();
-    broadcastRoom(room);
-    reply({ ok: true });
+        await socket.leave(room.id);
+        touchRoom(room);
+        await persist();
+        broadcastRoom(room);
+        reply({ ok: true });
+      });
+    } catch {
+      reply({ ok: false, error: error('ROOM_BUSY', '房间操作繁忙，请稍后重试') });
+    }
   });
 
   socket.on('disconnect', () => {
@@ -358,22 +414,36 @@ io.on('connection', (socket) => {
     if (!session) return;
     session.socketId = undefined;
     session.lastSeenAt = now();
-    setPlayerConnection(session.playerId, 'reconnecting');
+    void setPlayerConnection(session.playerId, 'reconnecting');
 
     const timer = setTimeout(() => {
-      setPlayerConnection(session.playerId, 'offline');
-      const room = findRoomByPlayer(session.playerId);
-      if (room) {
-        closeRoomIfEmpty(room);
-        void persist();
-      }
+      void setPlayerConnection(session.playerId, 'offline').then(async () => {
+        const room = findRoomByPlayer(session.playerId);
+        if (!room) return;
+        await realtime.withRoomLock(room.id, async () => {
+          const currentRoom = rooms.get(room.id);
+          if (!currentRoom) return;
+          closeRoomIfEmpty(currentRoom);
+          await persist();
+        });
+      });
     }, reconnectGraceMs);
     reconnectTimers.set(session.playerId, timer);
-    void persist();
   });
 });
 
 await loadPersistedData();
 httpServer.listen(port, () => {
-  console.log(`Property Merchant online server listening on http://localhost:${port}`);
+  console.log(
+    `Property Merchant online server listening on http://localhost:${port} (${storage.driver} storage, ${realtime.driver} realtime)`,
+  );
 });
+
+async function shutdown() {
+  await realtime.close();
+  await storage.close?.();
+  httpServer.close();
+}
+
+process.once('SIGINT', () => void shutdown());
+process.once('SIGTERM', () => void shutdown());
