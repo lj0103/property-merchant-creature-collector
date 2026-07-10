@@ -6,7 +6,7 @@
 
 已完成一个可以实际运行的多人在线版本：玩家可在不同浏览器/设备中连接同一台服务端，通过房间码加入同一房间，准备后开始游戏，并由服务端统一校验和广播所有游戏行动。
 
-当前在线版使用游客身份，支持两种持久化方式：默认本地 JSON 快照；配置 `DATABASE_URL` 后自动切换为 Prisma + PostgreSQL。配置 `REDIS_URL` 后会启用跨实例 Socket.IO 广播、房间分布式锁和在线状态记录。正式账号、HTTPS Cookie 与部署流水线仍属于后续生产化阶段。
+当前在线版使用安全游客身份：服务端通过 `HttpOnly + SameSite` Cookie 保存会话，生产环境自动启用 `Secure`，浏览器脚本无法读取会话 token。持久化支持本地 JSON 或 Prisma + PostgreSQL；配置 `REDIS_URL` 后启用跨实例 Socket.IO 广播、房间分布式锁和在线状态记录。
 
 ## 启动方式
 
@@ -210,6 +210,46 @@ npm test
 - `npm run build` 通过。
 - 无 Redis 环境下服务端可正常启动，`/health` 返回 `"realtime":"memory"`。
 
+### 阶段 8：安全游客会话与跨实例会话查询（已完成）
+
+开发内容：
+
+- 新增 `POST /api/session`，由服务端创建或恢复游客身份并写入 `HttpOnly` Cookie。
+- Cookie 使用 `SameSite=Lax`；生产环境或 `COOKIE_SECURE=true` 时启用 `Secure`。
+- Socket.IO 握手增加 Cookie 鉴权，未认证连接无法调用房间和游戏事件。
+- WebSocket 握手校验 `Origin`，拒绝非 `CLIENT_ORIGIN` 的浏览器连接。
+- 前端先建立安全 HTTP 会话，再使用 `withCredentials` 建立实时连接。
+- 会话 token 不再返回给前端，也不再保存到 localStorage。
+- 支持把旧版 localStorage token 一次性迁移至安全 Cookie，迁移后立即删除旧 token。
+- 持久化层新增按 token 查询和保存会话接口；Prisma 模式可在任意服务实例按需恢复共享会话。
+- 昵称更新和断线状态继续由服务端持久化，并与房间状态同步。
+
+环境变量：
+
+- `SESSION_COOKIE_NAME`：会话 Cookie 名称，默认 `pm_session`。
+- `SESSION_COOKIE_MAX_AGE_MS`：会话有效期，默认 30 天。
+- `COOKIE_SECURE`：本地 HTTP 开发设为 `false`；正式 HTTPS 部署设为 `true`。
+
+主要代码：
+
+- `server/index.ts`
+- `server/storage.ts`
+- `src/components/OnlineGame.tsx`
+- `src/multiplayer/protocol.ts`
+
+安全说明：
+
+- 生产环境必须使用 HTTPS，并让浏览器访问的前端域名与 Cookie 策略匹配。
+- `CLIENT_ORIGIN` 必须设置为真实前端地址，不能在携带凭据时使用通配符来源。
+
+验收结果：
+
+- `npm test` 通过。
+- `npm run build` 通过。
+- 未携带 Cookie 的 Socket.IO 连接返回 `UNAUTHORIZED`。
+- 双 HttpOnly Cookie 客户端建房、加入、准备、开局和游戏行动流程通过。
+- `/api/session` 响应不包含会话 token。
+
 ## 游戏规则
 
 每回合选择一项行动：获取三种不同基础能量、在公共池至少有四枚时获取两枚同种能量、预定一张公开精灵卡，或捕捉一张公开/已预定的精灵卡。
@@ -243,17 +283,17 @@ npm test
 - 不配置 Redis 时适合本机、局域网或单台云服务器部署。
 - 默认房间快照持久化到 JSON 文件；配置 `DATABASE_URL` 后使用 PostgreSQL。
 - 配置 Redis 后可跨实例广播事件、同步房间缓存并串行处理同一房间操作。
-- 游客 token 存在浏览器 localStorage 中。
-- 尚未接入正式账号体系和 HTTPS Cookie。
-- 正式多实例部署应同时使用 PostgreSQL + Redis，并在负载均衡器启用 WebSocket 与会话粘滞；后续仍需把游客会话查询改为共享缓存或数据库按需读取。
+- 游客 token 只保存在服务端签发的 HttpOnly Cookie 中，前端 JavaScript 不可读取。
+- Prisma 模式支持共享会话按需查询；正式多实例部署应同时使用 PostgreSQL + Redis，并在负载均衡器启用 WebSocket。
+- 当前仍是匿名游客身份，不包含邮箱注册、密码找回或第三方登录。
 
 ## 后续生产化阶段
 
 建议按以下顺序继续：
 
-1. 将游客 token 改为 `HttpOnly + Secure + SameSite` Cookie，并支持共享会话查询。
-2. 增加服务端集成测试和多客户端端到端测试。
-3. 增加部署配置、日志、监控、限流和房间清理任务。
-4. 部署前端静态站点与独立 WebSocket 服务。
+1. 增加服务端集成测试和多客户端端到端测试。
+2. 增加部署配置、结构化日志、监控、限流和房间清理任务。
+3. 部署前端静态站点与独立 WebSocket 服务。
+4. 如需长期账号，再增加邮箱或第三方登录体系。
 
 本项目中的名称、视觉符号与文案均为原创，不使用任何第三方角色 IP 素材。

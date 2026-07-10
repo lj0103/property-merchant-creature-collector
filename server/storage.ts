@@ -6,6 +6,7 @@ import type { GameState } from '../src/game/types';
 import type { RoomPlayerPayload, RoomStatus, SessionPayload } from '../src/multiplayer/protocol';
 
 export interface SessionRecord extends SessionPayload {
+  sessionToken: string;
   socketId?: string;
   lastSeenAt: string;
 }
@@ -32,6 +33,8 @@ export interface RoomStorage {
   readonly driver: 'json' | 'prisma';
   load(): Promise<PersistedData>;
   save(data: PersistedData): Promise<void>;
+  findSession(sessionToken: string): Promise<SessionRecord | undefined>;
+  saveSession(session: SessionRecord): Promise<void>;
   close?(): Promise<void>;
 }
 
@@ -57,6 +60,17 @@ export class JsonRoomStorage implements RoomStorage {
   async save(data: PersistedData): Promise<void> {
     await mkdir(dirname(this.dataFile), { recursive: true });
     await writeFile(this.dataFile, JSON.stringify(data, null, 2));
+  }
+
+  async findSession(sessionToken: string) {
+    const data = await this.load();
+    return data.sessions.find((session) => session.sessionToken === sessionToken);
+  }
+
+  async saveSession(session: SessionRecord) {
+    const data = await this.load();
+    data.sessions = [session, ...data.sessions.filter((item) => item.sessionToken !== session.sessionToken)];
+    await this.save(data);
   }
 }
 
@@ -146,6 +160,37 @@ export class PrismaRoomStorage implements RoomStorage {
         }),
       ),
     ]);
+  }
+
+  async findSession(sessionToken: string) {
+    const session = await this.prisma.guestSession.findUnique({ where: { sessionToken } });
+    if (!session) return undefined;
+    return {
+      playerId: session.playerId,
+      displayName: session.displayName,
+      sessionToken: session.sessionToken,
+      socketId: session.socketId ?? undefined,
+      lastSeenAt: session.lastSeenAt.toISOString(),
+    };
+  }
+
+  async saveSession(session: SessionRecord) {
+    await this.prisma.guestSession.upsert({
+      where: { sessionToken: session.sessionToken },
+      create: {
+        sessionToken: session.sessionToken,
+        playerId: session.playerId,
+        displayName: session.displayName,
+        socketId: session.socketId,
+        lastSeenAt: new Date(session.lastSeenAt),
+      },
+      update: {
+        playerId: session.playerId,
+        displayName: session.displayName,
+        socketId: session.socketId,
+        lastSeenAt: new Date(session.lastSeenAt),
+      },
+    });
   }
 
   async close(): Promise<void> {

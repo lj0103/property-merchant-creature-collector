@@ -23,30 +23,63 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<EnergyType[]>([]);
 
   useEffect(() => {
-    const nextSocket: OnlineSocket = io(apiUrl, { autoConnect: true });
-    setSocket(nextSocket);
-    nextSocket.on('connect', () => {
-      const saved = localStorage.getItem(sessionKey);
-      nextSocket.emit('session:restore', { sessionToken: saved ?? undefined, displayName }, (response) => {
-        setSession(response.session);
-        setRoom(response.room);
-        localStorage.setItem(sessionKey, response.session.sessionToken);
-        localStorage.setItem('property-merchant-display-name', response.session.displayName);
-        setMessage(response.room ? `已恢复房间 ${response.room.code}` : '已连接，可以创建或加入房间。');
-      });
-    });
-    nextSocket.on('room:update', (nextRoom) => {
-      setRoom(nextRoom);
-      setMessage(`房间 ${nextRoom.code} 已同步。`);
-    });
-    nextSocket.on('room:closed', (payload) => {
-      setRoom(undefined);
-      setMessage(payload.message);
-    });
-    nextSocket.on('server:error', (error) => setMessage(error.message));
-    nextSocket.on('disconnect', () => setMessage('连接已断开，正在尝试重连…'));
+    let active = true;
+    let nextSocket: OnlineSocket | undefined;
+
+    const connect = async () => {
+      try {
+        const legacySessionToken = localStorage.getItem(sessionKey) ?? undefined;
+        const sessionResponse = await fetch(`${apiUrl}/api/session`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName, legacySessionToken }),
+        });
+        if (!sessionResponse.ok) throw new Error('无法建立安全会话');
+        const restored = (await sessionResponse.json()) as { session: SessionPayload; room?: RoomPayload };
+        if (!active) return;
+
+        localStorage.removeItem(sessionKey);
+        localStorage.setItem('property-merchant-display-name', restored.session.displayName);
+        setSession(restored.session);
+        setRoom(restored.room);
+
+        nextSocket = io(apiUrl, { autoConnect: true, withCredentials: true });
+        setSocket(nextSocket);
+        nextSocket.on('connect', () => {
+          nextSocket?.emit('session:restore', { displayName }, (response) => {
+            if (response.error || !response.session) {
+              setMessage(response.error?.message ?? '安全会话恢复失败');
+              return;
+            }
+            setSession(response.session);
+            setRoom(response.room);
+            localStorage.setItem('property-merchant-display-name', response.session.displayName);
+            setMessage(response.room ? `已恢复房间 ${response.room.code}` : '已连接，可以创建或加入房间。');
+          });
+        });
+        nextSocket.on('room:update', (nextRoom) => {
+          setRoom(nextRoom);
+          setMessage(`房间 ${nextRoom.code} 已同步。`);
+        });
+        nextSocket.on('room:closed', (payload) => {
+          setRoom(undefined);
+          setMessage(payload.message);
+        });
+        nextSocket.on('server:error', (error) => setMessage(error.message));
+        nextSocket.on('connect_error', (connectionError) => {
+          setMessage(connectionError.message === 'UNAUTHORIZED' ? '安全会话已失效，请刷新页面重试。' : '无法连接联机服务器。');
+        });
+        nextSocket.on('disconnect', () => setMessage('连接已断开，正在尝试重连…'));
+      } catch (cause) {
+        if (active) setMessage(cause instanceof Error ? cause.message : '无法连接联机服务器');
+      }
+    };
+
+    void connect();
     return () => {
-      nextSocket.disconnect();
+      active = false;
+      nextSocket?.disconnect();
     };
   }, []);
 
@@ -62,10 +95,13 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
 
   const updateName = () => {
     if (!socket) return;
-    socket.emit('session:restore', { sessionToken: session?.sessionToken, displayName }, (response) => {
+    socket.emit('session:restore', { displayName }, (response) => {
+      if (response.error || !response.session) {
+        setMessage(response.error?.message ?? '昵称更新失败');
+        return;
+      }
       setSession(response.session);
       setRoom(response.room);
-      localStorage.setItem(sessionKey, response.session.sessionToken);
       localStorage.setItem('property-merchant-display-name', response.session.displayName);
       setMessage('昵称已更新。');
     });

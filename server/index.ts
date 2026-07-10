@@ -23,10 +23,17 @@ const httpServer = createServer(app);
 const allowedOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 const port = Number(process.env.PORT ?? 8787);
 const reconnectGraceMs = Number(process.env.RECONNECT_GRACE_MS ?? 60_000);
+const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? 'pm_session';
+const sessionCookieMaxAgeMs = Number(process.env.SESSION_COOKIE_MAX_AGE_MS ?? 30 * 24 * 60 * 60 * 1_000);
+const cookieSecure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
 const storage = createRoomStorage();
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
   cors: { origin: allowedOrigin, credentials: true },
+  allowRequest: (request, callback) => {
+    const origin = request.headers.origin;
+    callback(null, !origin || origin === allowedOrigin);
+  },
 });
 const realtime = await createRealtimeCoordinator(io);
 
@@ -43,6 +50,10 @@ const displayNameSchema = z
   .pipe(z.string().min(1).max(12));
 const maxPlayersSchema = z.union([z.literal(2), z.literal(3), z.literal(4)]);
 const roomCodeSchema = z.string().trim().min(4).max(8).transform((value) => value.toUpperCase());
+const sessionRequestSchema = z.object({
+  displayName: z.string().optional(),
+  legacySessionToken: z.string().min(1).max(128).optional(),
+});
 
 const now = () => new Date().toISOString();
 const makeId = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`;
@@ -53,6 +64,32 @@ const makeCode = () => {
   return code;
 };
 const error = (code: string, message: string): ServerErrorPayload => ({ code, message });
+const toSessionPayload = (session: SessionRecord) => ({
+  playerId: session.playerId,
+  displayName: session.displayName,
+});
+
+function readCookie(header: string | undefined, name: string) {
+  if (!header) return undefined;
+  for (const part of header.split(';')) {
+    const [key, ...valueParts] = part.trim().split('=');
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(valueParts.join('='));
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+async function findSharedSession(sessionToken: string) {
+  const cached = sessions.get(sessionToken);
+  if (cached) return cached;
+  const stored = await storage.findSession(sessionToken);
+  if (stored) sessions.set(sessionToken, stored);
+  return stored;
+}
 
 const toRoomPayload = (room: RoomRecord): RoomPayload => ({
   id: room.id,
@@ -138,6 +175,40 @@ function closeRoomIfEmpty(room: RoomRecord) {
 
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json());
+app.post('/api/session', async (request, response) => {
+  const bodyResult = sessionRequestSchema.safeParse(request.body);
+  if (!bodyResult.success) return response.status(400).json({ error: error('BAD_REQUEST', '会话参数无效') });
+
+  const nameResult = displayNameSchema.safeParse(bodyResult.data.displayName ?? '旅人');
+  const displayName = nameResult.success ? nameResult.data : '旅人';
+  const cookieToken = readCookie(request.headers.cookie, sessionCookieName);
+  const requestedToken = cookieToken ?? bodyResult.data.legacySessionToken;
+  let session = requestedToken ? await findSharedSession(requestedToken) : undefined;
+
+  if (!session) {
+    session = {
+      playerId: makeId('player'),
+      displayName,
+      sessionToken: makeId('session'),
+      lastSeenAt: now(),
+    };
+  }
+
+  session.displayName = displayName || session.displayName;
+  session.lastSeenAt = now();
+  sessions.set(session.sessionToken, session);
+  await storage.saveSession(session);
+  response.cookie(sessionCookieName, session.sessionToken, {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: 'lax',
+    maxAge: sessionCookieMaxAgeMs,
+    path: '/',
+  });
+
+  const room = findRoomByPlayer(session.playerId);
+  return response.json({ session: toSessionPayload(session), room: room ? toRoomPayload(room) : undefined });
+});
 app.get('/health', (_request, response) => {
   response.json({ ok: true, storage: storage.driver, realtime: realtime.driver, rooms: rooms.size, time: now() });
 });
@@ -147,21 +218,28 @@ io.on('room:sync', (room) => {
   else rooms.set(room.id, room);
 });
 
+io.use(async (socket, next) => {
+  try {
+    const sessionToken = readCookie(socket.handshake.headers.cookie, sessionCookieName);
+    const session = sessionToken ? await findSharedSession(sessionToken) : undefined;
+    if (!session) return next(new Error('UNAUTHORIZED'));
+    socket.data.playerId = session.playerId;
+    socket.data.sessionToken = session.sessionToken;
+    next();
+  } catch {
+    next(new Error('SESSION_LOOKUP_FAILED'));
+  }
+});
+
 io.on('connection', (socket) => {
   socket.on('session:restore', async (payload, reply) => {
+    const authenticatedSession = requireSession(socket);
+    if (!authenticatedSession) {
+      return reply({ error: error('UNAUTHORIZED', '安全会话已失效，请重新连接') });
+    }
     const nameResult = displayNameSchema.safeParse(payload.displayName ?? '旅人');
     const displayName = nameResult.success ? nameResult.data : '旅人';
-    let session = payload.sessionToken ? sessions.get(payload.sessionToken) : undefined;
-
-    if (!session) {
-      session = {
-        playerId: makeId('player'),
-        displayName,
-        sessionToken: makeId('session'),
-        lastSeenAt: now(),
-      };
-      sessions.set(session.sessionToken, session);
-    }
+    const session = authenticatedSession;
 
     session.displayName = displayName || session.displayName;
     session.socketId = socket.id;
@@ -189,7 +267,7 @@ io.on('connection', (socket) => {
     }
 
     await persist();
-    reply({ session, room: room ? toRoomPayload(room) : undefined });
+    reply({ session: toSessionPayload(session), room: room ? toRoomPayload(room) : undefined });
   });
 
   socket.on('room:create', async (payload, reply) => {

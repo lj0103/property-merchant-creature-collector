@@ -7,7 +7,6 @@ export type ConnectionState = 'online' | 'reconnecting' | 'offline';
 export interface SessionPayload {
   playerId: string;
   displayName: string;
-  sessionToken: string;
 }
 
 export interface RoomPlayerPayload {
@@ -38,8 +37,8 @@ export interface ServerErrorPayload {
 
 export interface ClientToServerEvents {
   'session:restore': (
-    payload: { sessionToken?: string; displayName?: string },
-    reply: (response: { session: SessionPayload; room?: RoomPayload }) => void,
+    payload: { displayName?: string },
+    reply: (response: { session?: SessionPayload; room?: RoomPayload; error?: ServerErrorPayload }) => void,
   ) => void;
   'room:create': (payload: { maxPlayers: 2 | 3 | 4 }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
   'room:join': (payload: { code: string }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
