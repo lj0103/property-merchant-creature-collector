@@ -1,2 +1,57 @@
-import type { CreatureCard as CardType, Phase, Player } from '../game/types'; import { ENERGY_ICONS,ENERGY_LABELS } from '../data/constants'; import { canCapture,getEffectiveCost } from '../game/rules'; import { useGameStore } from '../store/gameStore';
-export function CreatureCard({card,player,source='market',phase:phaseOverride,disabled=false,onCapture,onReserve}:{card:CardType;player:Player;source?:'market'|'reserved';phase?:Phase;disabled?:boolean;onCapture?:(id:string,source:'market'|'reserved')=>void;onReserve?:(id:string)=>void}){const localCapture=useGameStore(s=>s.captureCard),localReserve=useGameStore(s=>s.reserveCard),localPhase=useGameStore(s=>s.phase);const capture=onCapture??localCapture,reserve=onReserve??localReserve,phase=phaseOverride??localPhase;const cost=getEffectiveCost(player,card),able=!disabled&&canCapture(player,card)&&phase==='playing';return <article className={`creature element-${card.element} ${able?'affordable':''}`}><div className="card-top"><span className="level">{'◆'.repeat(card.level)}</span><span className="points">{card.points}<small> 分</small></span></div><div className="creature-orb">{ENERGY_ICONS[card.element]}</div><h3>{card.name}</h3><p className="flavor">{card.description}</p><div className="costs">{Object.entries(cost).filter(([,n])=>n>0).map(([t,n])=><span className={`token mini ${t}`} title={ENERGY_LABELS[t as keyof typeof ENERGY_LABELS]} key={t}>{ENERGY_ICONS[t as keyof typeof ENERGY_ICONS]} {n}</span>)}{Object.values(cost).every(n=>n===0)&&<span className="free">零成本</span>}</div><div className="card-actions"><button className="capture" disabled={!able} onClick={()=>confirm(`是否捕捉「${card.name}」？`)&&capture(card.id,source)}>{able?'捕捉':'能量不足'}</button>{source==='market'&&<button className="reserve" disabled={disabled||phase!=='playing'||player.reservedCards.length>=3} onClick={()=>confirm(`是否预定「${card.name}」？`)&&reserve(card.id)}>预定</button>}</div></article>}
+import type { CreatureCard as CardType, Phase, Player } from '../game/types';
+import { ENERGY_ICONS, ENERGY_LABELS } from '../data/constants';
+import { canCapture, getEffectiveCost } from '../game/rules';
+import { useGameStore } from '../store/gameStore';
+
+interface CreatureCardProps {
+  card: CardType;
+  player: Player;
+  source?: 'market' | 'reserved';
+  phase?: Phase;
+  disabled?: boolean;
+  onCapture?: (id: string, source: 'market' | 'reserved') => void;
+  onReserve?: (id: string) => void;
+}
+
+export function CreatureCard({
+  card,
+  player,
+  source = 'market',
+  phase: phaseOverride,
+  disabled = false,
+  onCapture,
+  onReserve,
+}: CreatureCardProps) {
+  const localCapture = useGameStore((state) => state.captureCard);
+  const localReserve = useGameStore((state) => state.reserveCard);
+  const localPhase = useGameStore((state) => state.phase);
+  const capture = onCapture ?? localCapture;
+  const reserve = onReserve ?? localReserve;
+  const phase = phaseOverride ?? localPhase;
+  const cost = getEffectiveCost(player, card);
+  const able = !disabled && canCapture(player, card) && phase === 'playing';
+
+  return (
+    <article className={`creature element-${card.element} ${able ? 'affordable' : ''}`}>
+      <div className="card-top">
+        <span className="level">阶位 {'◆'.repeat(card.level)}</span>
+        <span className="points">{card.points}<small> 声望</small></span>
+      </div>
+      <div className="creature-art">
+        <span className="art-rune">{ENERGY_ICONS[card.element]}</span>
+        <small>{ENERGY_LABELS[card.element]}系精灵</small>
+      </div>
+      <h3>{card.name}</h3>
+      <p className="flavor">「{card.description}」</p>
+      <div className="cost-label">缔结所需</div>
+      <div className="costs">
+        {Object.entries(cost).filter(([, count]) => count > 0).map(([type, count]) => <span className={`token mini ${type}`} title={ENERGY_LABELS[type as keyof typeof ENERGY_LABELS]} key={type}>{ENERGY_ICONS[type as keyof typeof ENERGY_ICONS]} {count}</span>)}
+        {Object.values(cost).every((count) => count === 0) && <span className="free">无需能量</span>}
+      </div>
+      <div className="card-actions">
+        <button className="capture" disabled={!able} onClick={() => confirm(`是否捕捉「${card.name}」？`) && capture(card.id, source)}>{able ? '缔结契约' : '能量不足'}</button>
+        {source === 'market' && <button className="reserve" disabled={disabled || phase !== 'playing' || player.reservedCards.length >= 3} onClick={() => confirm(`是否预定「${card.name}」？`) && reserve(card.id)}>预定</button>}
+      </div>
+    </article>
+  );
+}
