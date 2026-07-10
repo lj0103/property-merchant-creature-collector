@@ -518,10 +518,16 @@ httpServer.listen(port, () => {
 });
 
 async function shutdown() {
+  reconnectTimers.forEach((timer) => clearTimeout(timer));
+  reconnectTimers.clear();
+  await new Promise<void>((resolve) => io.close(() => resolve()));
   await realtime.close();
   await storage.close?.();
-  httpServer.close();
 }
 
-process.once('SIGINT', () => void shutdown());
-process.once('SIGTERM', () => void shutdown());
+function handleShutdownSignal() {
+  void shutdown().finally(() => process.exit(0));
+}
+
+process.once('SIGINT', handleShutdownSignal);
+process.once('SIGTERM', handleShutdownSignal);

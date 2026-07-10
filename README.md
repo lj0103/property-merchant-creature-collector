@@ -1,5 +1,7 @@
 # 属性商人：精灵收集家
 
+[![CI](https://github.com/lj0103/property-merchant-creature-collector/actions/workflows/ci.yml/badge.svg)](https://github.com/lj0103/property-merchant-creature-collector/actions/workflows/ci.yml)
+
 一个受经典资源收集桌游启发的原创精灵收集策略卡牌小游戏。当前仓库已经从“本地同屏版”升级为“本地同屏 + 真实多人在线房间版”。
 
 ## 当前交付状态
@@ -72,7 +74,11 @@ REDIS_URL=redis://localhost:6379 npm run dev:online
 ```bash
 npm run build
 npm test
+npm run test:integration
+npm run test:all
 ```
+
+`npm test` 运行快速单元测试；`npm run test:integration` 会启动临时服务端并执行真实 HTTP + WebSocket 双客户端流程；`npm run test:all` 依次运行两者。
 
 ## 阶段开发标注
 
@@ -250,6 +256,33 @@ npm test
 - 双 HttpOnly Cookie 客户端建房、加入、准备、开局和游戏行动流程通过。
 - `/api/session` 响应不包含会话 token。
 
+### 阶段 9：服务端集成测试与 GitHub Actions（已完成）
+
+开发内容：
+
+- 新增 `server/integration.test.ts`，测试时自动启动隔离的临时服务端和 JSON 数据目录。
+- 自动验证未认证 Socket.IO 连接返回 `UNAUTHORIZED`。
+- 自动验证恶意 WebSocket `Origin` 无法连接。
+- 自动验证 `/api/session` 设置 HttpOnly Cookie 且响应不泄露 token。
+- 使用两个独立 Cookie 客户端执行身份恢复、建房、加入、准备、开局和首回合行动。
+- 新增 `test:integration` 和 `test:all` 脚本，区分快速单元测试与真实网络集成测试。
+- 修复服务端退出时未清理断线重连计时器的问题，现在可以优雅停止。
+- 新增 `.github/workflows/ci.yml`，每次推送 `main` 或提交 Pull Request 时自动安装依赖、运行全部测试并构建。
+
+主要代码：
+
+- `server/integration.test.ts`
+- `.github/workflows/ci.yml`
+- `server/index.ts`
+- `package.json`
+
+验收结果：
+
+- 单元测试：3 个测试文件、5 项测试通过。
+- 集成测试：1 个测试文件、完整双客户端场景通过。
+- `npm run build` 通过。
+- 临时服务端在测试结束后可正常退出，无残留计时器。
+
 ## 游戏规则
 
 每回合选择一项行动：获取三种不同基础能量、在公共池至少有四枚时获取两枚同种能量、预定一张公开精灵卡，或捕捉一张公开/已预定的精灵卡。
@@ -291,9 +324,10 @@ npm test
 
 建议按以下顺序继续：
 
-1. 增加服务端集成测试和多客户端端到端测试。
-2. 增加部署配置、结构化日志、监控、限流和房间清理任务。
-3. 部署前端静态站点与独立 WebSocket 服务。
-4. 如需长期账号，再增加邮箱或第三方登录体系。
+1. 增加限流、房间自动清理和结构化日志。
+2. 增加前端浏览器端到端测试与断线重连压力测试。
+3. 增加生产部署配置和监控告警。
+4. 部署前端静态站点与独立 WebSocket 服务。
+5. 如需长期账号，再增加邮箱或第三方登录体系。
 
 本项目中的名称、视觉符号与文案均为原创，不使用任何第三方角色 IP 素材。

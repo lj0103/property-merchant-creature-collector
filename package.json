@@ -15,7 +15,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run --exclude server/integration.test.ts",
+    "test:integration": "vitest run server/integration.test.ts --testTimeout=15000 --hookTimeout=15000",
+    "test:all": "npm run test && npm run test:integration"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
