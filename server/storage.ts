@@ -16,7 +16,7 @@ export interface RoomRecord {
   code: string;
   hostPlayerId: string;
   status: RoomStatus;
-  maxPlayers: 2 | 3 | 4;
+  maxPlayers: 2 | 3 | 4 | 5;
   players: RoomPlayerPayload[];
   gameState?: GameState;
   createdAt: string;
@@ -97,7 +97,7 @@ export class PrismaRoomStorage implements RoomStorage {
         code: room.code,
         hostPlayerId: room.hostPlayerId,
         status: room.status as RoomStatus,
-        maxPlayers: room.maxPlayers as 2 | 3 | 4,
+        maxPlayers: room.maxPlayers as 2 | 3 | 4 | 5,
         players: room.players as unknown as RoomPlayerPayload[],
         gameState: room.gameState as unknown as GameState | undefined,
         createdAt: room.createdAt.toISOString(),

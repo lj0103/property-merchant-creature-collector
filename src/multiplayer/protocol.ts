@@ -23,7 +23,7 @@ export interface RoomPayload {
   code: string;
   hostPlayerId: string;
   status: RoomStatus;
-  maxPlayers: 2 | 3 | 4;
+  maxPlayers: 2 | 3 | 4 | 5;
   players: RoomPlayerPayload[];
   gameState?: GameState;
   createdAt: string;
@@ -40,7 +40,7 @@ export interface ClientToServerEvents {
     payload: { displayName?: string },
     reply: (response: { session?: SessionPayload; room?: RoomPayload; error?: ServerErrorPayload }) => void,
   ) => void;
-  'room:create': (payload: { maxPlayers: 2 | 3 | 4 }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
+  'room:create': (payload: { maxPlayers: 2 | 3 | 4 | 5 }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
   'room:join': (payload: { code: string }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
   'room:ready': (payload: { isReady: boolean }, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;
   'room:start': (_payload: Record<string, never>, reply: (response: { room?: RoomPayload; error?: ServerErrorPayload }) => void) => void;

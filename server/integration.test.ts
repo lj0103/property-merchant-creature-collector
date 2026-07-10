@@ -145,14 +145,50 @@ describe('secure online multiplayer server', () => {
       const started = await emitAck<{ room: { status: string } }>(first, 'room:start', {});
       expect(started.room.status).toBe('playing');
 
+      const rejected = await emitAck<{ error: { code: string } }>(first, 'game:action', {
+        action: { type: 'takeEnergies', energies: ['not-an-energy'] },
+      });
+      expect(rejected.error.code).toBe('BAD_REQUEST');
+
       const acted = await emitAck<{ room: { gameState: { currentPlayerIndex: number } } }>(first, 'game:action', {
         actionId: 'integration-first-turn',
-        action: { type: 'takeEnergies', energies: ['fire', 'water', 'earth'] },
+        action: { type: 'takeEnergies', energies: ['flame', 'aqua', 'leaf'] },
       });
       expect(acted.room.gameState.currentPlayerIndex).toBe(1);
     } finally {
       first.close();
       second.close();
+    }
+  });
+
+  it('starts and synchronizes a five-player room', async () => {
+    const names = ['五人甲', '五人乙', '五人丙', '五人丁', '五人戊'];
+    const sessions = await Promise.all(names.map((name) => openSession(name)));
+    const sockets = await Promise.all(sessions.map((session) => connect(session.cookie)));
+
+    try {
+      await Promise.all(
+        sockets.map((socket, index) => emitAck(socket, 'session:restore', { displayName: names[index] })),
+      );
+      const created = await emitAck<{ room: { code: string; maxPlayers: number } }>(sockets[0], 'room:create', {
+        maxPlayers: 5,
+      });
+      expect(created.room.maxPlayers).toBe(5);
+
+      for (const socket of sockets.slice(1)) {
+        await emitAck(socket, 'room:join', { code: created.room.code });
+        await emitAck(socket, 'room:ready', { isReady: true });
+      }
+
+      const started = await emitAck<{
+        room: { status: string; players: unknown[]; gameState: { players: unknown[]; energyPool: { flame: number } } };
+      }>(sockets[0], 'room:start', {});
+      expect(started.room.status).toBe('playing');
+      expect(started.room.players).toHaveLength(5);
+      expect(started.room.gameState.players).toHaveLength(5);
+      expect(started.room.gameState.energyPool.flame).toBe(8);
+    } finally {
+      sockets.forEach((socket) => socket.close());
     }
   });
 });

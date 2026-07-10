@@ -18,7 +18,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
   const [room, setRoom] = useState<RoomPayload>();
   const [displayName, setDisplayName] = useState(localStorage.getItem('property-merchant-display-name') ?? '旅人');
   const [roomCode, setRoomCode] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState<2 | 3 | 4>(2);
+  const [maxPlayers, setMaxPlayers] = useState<2 | 3 | 4 | 5>(2);
   const [message, setMessage] = useState('正在连接联机服务器…');
   const [selected, setSelected] = useState<EnergyType[]>([]);
 
@@ -171,12 +171,12 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
           <div className="brand-mark">⇄</div>
           <p className="eyebrow">真实多人在线</p>
           <h1>线上房间<br/><span>精灵收集家</span></h1>
-          <p className="intro">创建房间、分享房间码，2–4 名玩家可在不同设备实时游玩。服务器会统一校验所有行动。</p>
+          <p className="intro">创建房间、分享房间码，2–5 名玩家可在不同设备实时游玩。服务器会统一校验所有行动。</p>
           <label className="online-field"><span>你的昵称</span><input value={displayName} maxLength={12} onChange={(event)=>setDisplayName(event.target.value)} onBlur={updateName}/></label>
           {!room && <div className="online-columns">
             <section>
               <h2>创建房间</h2>
-              <div className="count-pills">{([2,3,4] as const).map((count)=><button className={maxPlayers===count?'active':''} onClick={()=>setMaxPlayers(count)} key={count}>{count} 人</button>)}</div>
+              <div className="count-pills">{([2,3,4,5] as const).map((count)=><button className={maxPlayers===count?'active':''} onClick={()=>setMaxPlayers(count)} key={count}>{count} 人</button>)}</div>
               <button className="primary big" onClick={createRoom}>创建线上房间</button>
             </section>
             <section>

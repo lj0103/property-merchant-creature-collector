@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import { z } from 'zod';
 import { applyGameAction, type GameAction } from '../src/game/actions';
 import { createGame } from '../src/game/setup';
+import { ENERGY_TYPES } from '../src/game/types';
 import type {
   ClientToServerEvents,
   ConnectionState,
@@ -48,8 +49,19 @@ const displayNameSchema = z
   .max(12)
   .transform((value) => value.replace(/[\u0000-\u001f\u007f]/g, '').trim())
   .pipe(z.string().min(1).max(12));
-const maxPlayersSchema = z.union([z.literal(2), z.literal(3), z.literal(4)]);
+const maxPlayersSchema = z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 const roomCodeSchema = z.string().trim().min(4).max(8).transform((value) => value.toUpperCase());
+const energyTypeSchema = z.enum(ENERGY_TYPES);
+const gameActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('takeEnergies'), energies: z.array(energyTypeSchema).min(1).max(3) }),
+  z.object({ type: z.literal('reserveCard'), cardId: z.string().min(1).max(128) }),
+  z.object({
+    type: z.literal('captureCard'),
+    cardId: z.string().min(1).max(128),
+    source: z.union([z.literal('market'), z.literal('reserved')]),
+  }),
+  z.object({ type: z.literal('discardEnergy'), energy: z.union([energyTypeSchema, z.literal('wild')]) }),
+]);
 const sessionRequestSchema = z.object({
   displayName: z.string().optional(),
   legacySessionToken: z.string().min(1).max(128).optional(),
@@ -275,7 +287,7 @@ io.on('connection', (socket) => {
     if (!session) return reply({ error: error('UNAUTHORIZED', '请先设置昵称并建立游客身份') });
 
     const maxPlayersResult = maxPlayersSchema.safeParse(payload.maxPlayers);
-    if (!maxPlayersResult.success) return reply({ error: error('BAD_REQUEST', '房间人数必须是 2、3 或 4') });
+    if (!maxPlayersResult.success) return reply({ error: error('BAD_REQUEST', '房间人数必须是 2、3、4 或 5') });
 
     const existingRoom = findRoomByPlayer(session.playerId);
     if (existingRoom) existingRoom.players = existingRoom.players.filter((player) => player.playerId !== session.playerId);
@@ -407,6 +419,8 @@ io.on('connection', (socket) => {
     const room = session ? findRoomByPlayer(session.playerId) : undefined;
     if (!session || !room) return reply({ error: error('NOT_IN_ROOM', '你还不在房间内') });
     if (room.status !== 'playing' || !room.gameState) return reply({ error: error('NOT_PLAYING', '对局尚未开始') });
+    const actionResult = gameActionSchema.safeParse(payload.action);
+    if (!actionResult.success) return reply({ error: error('BAD_REQUEST', '游戏行动参数无效') });
 
     try {
       await realtime.withRoomLock(room.id, async () => {
@@ -414,7 +428,7 @@ io.on('connection', (socket) => {
           return reply({ room: toRoomPayload(room) });
         }
 
-        const result = applyGameAction(room.gameState!, session.playerId, payload.action as GameAction);
+        const result = applyGameAction(room.gameState!, session.playerId, actionResult.data as GameAction);
         if (!result.ok) return reply({ error: error('INVALID_ACTION', result.error ?? '行动无效') });
 
         room.gameState = result.state;

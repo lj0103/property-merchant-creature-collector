@@ -6,7 +6,7 @@
 
 在线版必须支持：
 
-- 2–4 名玩家使用不同设备加入同一房间。
+- 2–5 名玩家使用不同设备加入同一房间。
 - 房主创建房间并分享房间码或邀请链接。
 - 玩家在准备后由房主开始游戏。
 - 服务端统一执行和校验所有游戏规则。
@@ -27,7 +27,7 @@
 1. 游客身份系统。
 2. 创建、加入、退出和解散房间。
 3. 房间准备与房主开始游戏。
-4. 2–4 人跨设备实时对战。
+4. 2–5 人跨设备实时对战。
 5. 服务端权威游戏规则。
 6. 回合操作实时广播。
 7. 断线检测、重连与状态恢复。
@@ -155,7 +155,7 @@ interface Room {
   code: string;
   hostPlayerId: string;
   status: RoomStatus;
-  maxPlayers: 2 | 3 | 4;
+  maxPlayers: 2 | 3 | 4 | 5;
   players: RoomPlayer[];
   createdAt: string;
   updatedAt: string;
@@ -318,7 +318,7 @@ interface OnlineGameState extends GameState {
 
 原本地 MVP 的以下规则全部保留：
 
-- 2–4 名玩家。
+- 2–5 名玩家。
 - 按人数初始化基础能量池，万能能量固定 5 枚。
 - 获取 3 个不同基础能量。
 - 公共池至少有 4 枚时获取 2 个相同能量。
@@ -559,7 +559,7 @@ type PublicErrorCode =
 
 ### 16.3 端到端测试
 
-使用 Playwright 创建 2–4 个独立浏览器上下文：
+使用 Playwright 创建 2–5 个独立浏览器上下文：
 
 1. 玩家 A 创建房间。
 2. 玩家 B 通过房间码加入。
