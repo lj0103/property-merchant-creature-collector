@@ -61,6 +61,7 @@ const gameActionSchema = z.discriminatedUnion('type', [
     source: z.union([z.literal('market'), z.literal('reserved')]),
   }),
   z.object({ type: z.literal('discardEnergy'), energy: z.union([energyTypeSchema, z.literal('wild')]) }),
+  z.object({ type: z.literal('passTurn') }),
 ]);
 const sessionRequestSchema = z.object({
   displayName: z.string().optional(),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './setup';
 import { canCapture, getEffectiveCost, getWinners } from './rules';
+import { applyGameAction, canPassTurn } from './actions';
 
 describe('核心规则', () => {
   it('按人数初始化能量与市场', () => {
@@ -38,5 +39,22 @@ describe('核心规则', () => {
     ];
     game.players[1].capturedCards = [{ ...game.market[1][2], points: 1 }];
     expect(getWinners(game.players)).toEqual(['p2']);
+  });
+
+  it('仅在没有任何合法行动时允许跳过回合', () => {
+    const game = createGame(['甲', '乙']);
+    expect(canPassTurn(game, 'p1')).toBe(false);
+    expect(applyGameAction(game, 'p1', { type: 'passTurn' }).ok).toBe(false);
+
+    for (const energy of ['flame', 'aqua', 'leaf', 'spark', 'mind'] as const) game.energyPool[energy] = 0;
+    game.market = { 1: [], 2: [], 3: [] };
+    const expensiveCard = { ...game.decks[3][0], cost: { flame: 99 } };
+    game.players[0].reservedCards = [0, 1, 2].map((index) => ({ ...expensiveCard, id: `blocked-${index}` }));
+
+    expect(canPassTurn(game, 'p1')).toBe(true);
+    const result = applyGameAction(game, 'p1', { type: 'passTurn' });
+    expect(result.ok).toBe(true);
+    expect(result.state.currentPlayerIndex).toBe(1);
+    expect(result.state.log[0].message).toContain('跳过了回合');
   });
 });

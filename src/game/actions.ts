@@ -12,7 +12,8 @@ export type GameAction =
   | { type: 'takeEnergies'; energies: EnergyType[] }
   | { type: 'reserveCard'; cardId: string }
   | { type: 'captureCard'; cardId: string; source: 'market' | 'reserved' }
-  | { type: 'discardEnergy'; energy: TokenType };
+  | { type: 'discardEnergy'; energy: TokenType }
+  | { type: 'passTurn' };
 
 export interface ActionResult {
   ok: boolean;
@@ -82,6 +83,23 @@ const finishAction = (state: GameState): GameState => {
 const reject = (state: GameState, error: string): ActionResult => ({ ok: false, state, error });
 const accept = (state: GameState): ActionResult => ({ ok: true, state });
 
+export function hasLegalAction(state: GameState, playerId: string) {
+  const player = state.players[state.currentPlayerIndex];
+  if (!player || player.id !== playerId || state.phase !== 'playing') return false;
+
+  const availableColors = ENERGY_TYPES.filter((energy) => state.energyPool[energy] > 0).length;
+  const canTakeGems = availableColors >= 3 || ENERGY_TYPES.some((energy) => state.energyPool[energy] >= 4);
+  const marketCards = ([1, 2, 3] as Level[]).flatMap((level) => state.market[level]);
+  const canReserve = player.reservedCards.length < 3 && marketCards.length > 0;
+  const canBuy = [...marketCards, ...player.reservedCards].some((card) => canCapture(player, card));
+  return canTakeGems || canReserve || canBuy;
+}
+
+export function canPassTurn(state: GameState, playerId: string) {
+  const player = state.players[state.currentPlayerIndex];
+  return Boolean(player && player.id === playerId && state.phase === 'playing' && !hasLegalAction(state, playerId));
+}
+
 export function applyGameAction(currentState: GameState, playerId: string, action: GameAction): ActionResult {
   const state = cloneGameState(currentState);
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -103,6 +121,12 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
   }
 
   if (state.phase !== 'playing') return reject(state, '当前不能执行这个行动');
+
+  if (action.type === 'passTurn') {
+    if (!canPassTurn(state, playerId)) return reject(state, '仍有可执行的行动，不能跳过回合');
+    state.log = addLog(state, `${currentPlayer.name} 当前无可执行行动，跳过了回合。`);
+    return accept(finishAction(state));
+  }
 
   if (action.type === 'takeEnergies') {
     const unique = new Set(action.energies);

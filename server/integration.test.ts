@@ -150,6 +150,11 @@ describe('secure online multiplayer server', () => {
       });
       expect(rejected.error.code).toBe('BAD_REQUEST');
 
+      const passRejected = await emitAck<{ error: { code: string } }>(first, 'game:action', {
+        action: { type: 'passTurn' },
+      });
+      expect(passRejected.error.code).toBe('INVALID_ACTION');
+
       const acted = await emitAck<{ room: { gameState: { currentPlayerIndex: number } } }>(first, 'game:action', {
         actionId: 'integration-first-turn',
         action: { type: 'takeEnergies', energies: ['flame', 'aqua', 'leaf'] },

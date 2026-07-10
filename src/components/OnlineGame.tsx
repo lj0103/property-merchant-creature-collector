@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { ENERGY_ICONS, ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
-import type { GameAction } from '../game/actions';
+import { canPassTurn, type GameAction } from '../game/actions';
 import { ENERGY_TYPES, type EnergyType, type TokenType } from '../game/types';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import type { ClientToServerEvents, RoomPayload, ServerToClientEvents, SessionPayload } from '../multiplayer/protocol';
@@ -90,6 +90,9 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
   const isMyTurn = Boolean(game && currentPlayer?.id === session?.playerId);
   const activePlayer = game ? game.players.find((player) => player.id === session?.playerId) ?? currentPlayer : undefined;
   const discounts = activePlayer ? getDiscounts(activePlayer) : undefined;
+  const ordinaryGemsEmpty = Boolean(game && ENERGY_TYPES.every((energy) => game.energyPool[energy] === 0));
+  const mayPass = Boolean(game && session && canPassTurn(game, session.playerId));
+  const actionHint = mayPass ? '没有任何可执行行动，可以跳过回合' : ordinaryGemsEmpty ? '普通宝石已空，请捕捉或预定精灵' : isMyTurn ? '每回合可拿宝石、捕捉或预定' : '等待当前玩家行动';
   const validEnergySelection =
     (selected.length === 3 && new Set(selected).size === 3) ||
     (selected.length === 1 && Boolean(game && game.energyPool[selected[0]] >= 4));
@@ -220,10 +223,10 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
       })}</section>
       <div className="layout">
         <aside className="left-panel panel">
-          <div className="panel-heading"><span>五相宝石区</span><h2>公共宝石</h2><p>{isMyTurn?'从桌面中央拿取宝石':'等待当前玩家行动'}</p></div>
-          <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}宝石</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能宝石</span><b>{game.energyPool.wild}</b></div></div>
+          <div className="panel-heading"><span>五相宝石区</span><h2>公共宝石</h2><p>{actionHint}</p></div>
+          <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}宝石</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild" title="万能宝石不能直接拿取；预定公开精灵卡时，如果公共区还有万能宝石，会自动获得 1 枚。"><i>{ENERGY_ICONS.wild}</i><span>万能宝石<small className="wild-help">不可直接拿取 · 预定时获得</small></span><b>{game.energyPool.wild}</b></div></div>
           <button className="primary" disabled={!isMyTurn||!validEnergySelection||game.phase!=='playing'} onClick={()=>sendAction({type:'takeEnergies',energies:selected.length===1?[selected[0],selected[0]]:selected})}>{selected.length===1?'拿取同色宝石 ×2':'拿取所选宝石'}</button>
-          <button className="text-btn" onClick={()=>setSelected([])}>清空选择</button>
+          {mayPass&&isMyTurn?<button className="pass-turn" onClick={()=>sendAction({type:'passTurn'})}>当前无可执行行动 · 跳过回合</button>:<button className="text-btn" onClick={()=>setSelected([])}>清空选择</button>}
           <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{game.availableBadges.map((badge)=><div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
         </aside>
         <section className="market">

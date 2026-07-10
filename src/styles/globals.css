@@ -360,11 +360,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   font-style: normal;
 }
 .energy span { color: #afa38e; font-size: 9px; }
+.energy span small { display: block; margin-top: 1px; color: #d4bd7e; font-size: 6px; line-height: 1.2; }
 .energy b { font-size: 17px; line-height: 1; }
 .energy.wild { grid-column: 1 / -1; grid-template-columns: 34px 1fr auto; }
 .energy.selected { transform: translateY(-3px); border-color: #f0d074; box-shadow: 0 0 0 2px #f0d074, 0 8px 14px #0008; }
 .energy:disabled { opacity: .45; }
 .left-panel>.primary { margin-top: 13px; }
+.pass-turn { width: 100%; border: 1px solid #cba65d; border-radius: 6px; padding: 7px 5px; color: #ffe7a7; background: #4a3218; font-size: 9px; font-weight: 800; }
 
 .flame, .element-flame { --color: #dc4f5f; --gem-clip: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
 .aqua, .element-aqua { --color: #28aeda; --gem-clip: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
@@ -673,6 +675,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .energy.wild { grid-template-columns: 31px 1fr auto; }
   .left-panel>.primary { margin-top: 6px; padding: 7px 4px; font-size: 9px; box-shadow: inset 0 1px #ffffff35, 0 2px 0 #0d3029; }
   .left-panel>.text-btn { padding: 4px; font-size: 8px; }
+  .left-panel>.pass-turn { padding: 4px 3px; font-size: 7px; }
   .badges {
     min-height: 0;
     display: grid;
