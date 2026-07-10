@@ -219,9 +219,9 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
       })}</section>
       <div className="layout">
         <aside className="left-panel panel">
-          <div className="panel-heading"><span>五相供给区</span><h2>能量筹码</h2><p>{isMyTurn?'从桌面中央拿取筹码':'等待当前玩家行动'}</p></div>
-          <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能·灵</span><b>{game.energyPool.wild}</b></div></div>
-          <button className="primary" disabled={!isMyTurn||!validEnergySelection||game.phase!=='playing'} onClick={()=>sendAction({type:'takeEnergies',energies:selected.length===1?[selected[0],selected[0]]:selected})}>{selected.length===1?'获取同种 ×2':'确认获取'}</button>
+          <div className="panel-heading"><span>五相宝石区</span><h2>公共宝石</h2><p>{isMyTurn?'从桌面中央拿取宝石':'等待当前玩家行动'}</p></div>
+          <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}宝石</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能宝石</span><b>{game.energyPool.wild}</b></div></div>
+          <button className="primary" disabled={!isMyTurn||!validEnergySelection||game.phase!=='playing'} onClick={()=>sendAction({type:'takeEnergies',energies:selected.length===1?[selected[0],selected[0]]:selected})}>{selected.length===1?'拿取同色宝石 ×2':'拿取所选宝石'}</button>
           <button className="text-btn" onClick={()=>setSelected([])}>清空选择</button>
           <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{game.availableBadges.map((badge)=><div className="badge" key={badge.id}><i>✧</i><p><strong>{badge.name} <em>+{badge.points}</em></strong><small>{Object.entries(badge.requirement).map(([energy,count])=>`${ENERGY_LABELS[energy as TokenType]} ${count}`).join(' · ')}</small></p></div>)}</div>
         </aside>
@@ -232,7 +232,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
         <aside className="right-panel panel player-mat">
           {activePlayer && <>
             <div className="profile"><span className="avatar large">{activePlayer.name.slice(0,1)}</span><div><p className="eyebrow">{isMyTurn?'你的回合':'你的状态'}</p><h2>{activePlayer.name}</h2></div><strong className="score">{getScore(activePlayer)}<small>/ {SCORE_TARGET}</small></strong></div>
-            <h3 className="section-label">持有能量 <span>{tokenCount(activePlayer)}/10</span></h3>
+            <h3 className="section-label">持有宝石 <span>{tokenCount(activePlayer)}/10</span></h3>
             <div className="wallet">{([...ENERGY_TYPES,'wild'] as TokenType[]).map((energy)=><button disabled={!isMyTurn||game.phase!=='discarding'||activePlayer.energies[energy]===0} onClick={()=>sendAction({type:'discardEnergy',energy})} className={`token ${energy}`} key={energy}>{ENERGY_ICONS[energy]} <b>{activePlayer.energies[energy]}</b></button>)}</div>
             {game.phase==='discarding'&&isMyTurn&&<p className="discard-tip">点击上方能量归还至 10 枚</p>}
             <h3 className="section-label">永久羁绊</h3><div className="discounts">{ENERGY_TYPES.map((energy)=><span className={energy} key={energy}>{ENERGY_ICONS[energy]} {discounts?.[energy]??0}</span>)}</div>

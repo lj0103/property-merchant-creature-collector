@@ -33,9 +33,9 @@ export function GameBoard() {
         </section>
         <div className="layout">
           <aside className="left-panel panel">
-            <div className="panel-heading"><span>五相供给区</span><h2>能量筹码</h2><p>{state.phase === 'playing' ? '从桌面中央拿取筹码' : '请先归还多余筹码'}</p></div>
-            <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能·灵</span><b>{state.energyPool.wild}</b></div></div>
-            <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同种 ×2' : '拿取所选筹码'}</button>
+            <div className="panel-heading"><span>五相宝石区</span><h2>公共宝石</h2><p>{state.phase === 'playing' ? '从桌面中央拿取宝石' : '请先归还多余宝石'}</p></div>
+            <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}宝石</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild"><i>{ENERGY_ICONS.wild}</i><span>万能宝石</span><b>{state.energyPool.wild}</b></div></div>
+            <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同色宝石 ×2' : '拿取所选宝石'}</button>
             <button className="text-btn" onClick={() => setSelected([])}>放回选择</button>
             <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{state.availableBadges.map((badge) => <div className="badge" key={badge.id}><i>✧</i><p><strong>{badge.name} <em>+{badge.points}</em></strong><small>{Object.entries(badge.requirement).map(([type, count]) => `${ENERGY_LABELS[type as TokenType]} ${count}`).join(' · ')}</small></p></div>)}</div>
           </aside>
@@ -45,7 +45,7 @@ export function GameBoard() {
           </section>
           <aside className="right-panel panel player-mat">
             <div className="profile"><span className="avatar large">{player.name.slice(0, 1)}</span><div><p className="eyebrow">近端玩家席</p><h2>{player.name}</h2></div><strong className="score">{getScore(player)}<small>/ {SCORE_TARGET}</small></strong></div>
-            <h3 className="section-label">手中筹码 <span>{tokenCount(player)}/10</span></h3>
+            <h3 className="section-label">持有宝石 <span>{tokenCount(player)}/10</span></h3>
             <div className="wallet">{([...ENERGY_TYPES, 'wild'] as TokenType[]).map((type) => <button disabled={state.phase !== 'discarding' || player.energies[type] === 0} onClick={() => state.discardEnergy(type)} className={`token ${type}`} key={type}>{ENERGY_ICONS[type]} <b>{player.energies[type]}</b></button>)}</div>
             {state.phase === 'discarding' && <p className="discard-tip">点击筹码，将持有数量归还至 10 枚</p>}
             <h3 className="section-label">永久羁绊</h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>

@@ -43,7 +43,7 @@ export function CreatureCard({
       </div>
       <h3>{card.name}</h3>
       <p className="flavor">「{card.description}」</p>
-      <div className="cost-label">缔结所需</div>
+      <div className="cost-label">所需宝石</div>
       <div className="costs">
         {Object.entries(cost).filter(([, count]) => count > 0).map(([type, count]) => <span className={`token mini ${type}`} title={ENERGY_LABELS[type as keyof typeof ENERGY_LABELS]} key={type}>{ENERGY_ICONS[type as keyof typeof ENERGY_ICONS]} {count}</span>)}
         {Object.values(cost).every((count) => count === 0) && <span className="free">无需能量</span>}
