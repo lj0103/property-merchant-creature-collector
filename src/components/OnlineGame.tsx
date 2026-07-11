@@ -9,6 +9,7 @@ import type { ClientToServerEvents, RoomPayload, ServerToClientEvents, SessionPa
 import { CreatureCard } from './CreatureCard';
 import { GemRequirements, PlayerGemSummary } from './GemDisplay';
 import { MatchRecord } from './MatchRecord';
+import { GameRulesDialog } from './GameRulesDialog';
 
 const sessionKey = 'property-merchant-online-session';
 const apiUrl = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8787';
@@ -178,6 +179,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
           <p className="eyebrow">真实多人在线</p>
           <h1>线上房间<br/><span>精灵收集家</span></h1>
           <p className="intro">创建房间、分享房间码，2–5 名玩家可在不同设备实时游玩。服务器会统一校验所有行动。</p>
+          <GameRulesDialog/>
           <label className="online-field"><span>你的昵称</span><input value={displayName} maxLength={12} onChange={(event)=>setDisplayName(event.target.value)} onBlur={updateName}/></label>
           {!room && <div className="online-columns">
             <section>
@@ -216,6 +218,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
         <div className="turn"><span>{isMyTurn?'轮到你的席位':'当前行动席'}</span><strong>{currentPlayer?.name}</strong></div>
         <MatchRecord players={game.players} stats={game.matchStats} phase={game.phase}/>
         <div className="target"><span>{game.finalRoundTriggered?'最终轮进行中':'目标声望'}</span><strong>{SCORE_TARGET}</strong></div>
+        <GameRulesDialog compact/>
         <button className="ghost" onClick={leaveRoom}>离开长桌</button>
       </header>
       <button className="notice" onClick={()=>setMessage('')}>{message}<span>×</span></button>

@@ -8,6 +8,7 @@ import { CreatureCard } from './CreatureCard';
 import { GemRequirements, PlayerGemSummary } from './GemDisplay';
 import { canPassTurn } from '../game/actions';
 import { MatchRecord } from './MatchRecord';
+import { GameRulesDialog } from './GameRulesDialog';
 
 export function GameBoard() {
   const state = useGameStore();
@@ -31,6 +32,7 @@ export function GameBoard() {
         <div className="turn"><span>行动席位</span><strong>{player.name}</strong></div>
         <MatchRecord players={state.players} stats={state.matchStats} phase={state.phase}/>
         <div className="target"><span>{state.finalRoundTriggered ? '最终轮进行中' : '目标声望'}</span><strong>{SCORE_TARGET}</strong></div>
+        <GameRulesDialog compact/>
         <button className="ghost" onClick={() => confirm('确定收起当前桌面并返回首页？') && state.resetGame()}>收起桌面</button>
       </header>
       {state.notice && <button className="notice" onClick={state.clearNotice}>{state.notice}<span>×</span></button>}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { GameRulesDialog } from './GameRulesDialog';
 
 export function SetupScreen({ onOnline }: { onOnline: () => void }) {
   const start = useGameStore((state) => state.startGame);
@@ -18,6 +19,7 @@ export function SetupScreen({ onOnline }: { onOnline: () => void }) {
         <p className="intro">围坐雾岚长桌，采集五行灵珠，与奇妙生灵缔结永久羁绊。率先抵达 15 分，在最终轮守住荣光。</p>
         <div className="mode-switch">
           <button className="ghost dark" onClick={onOnline}>◎ 进入线上多人桌</button>
+          <GameRulesDialog/>
         </div>
         <div className="setup-divider"><span>本地围桌</span></div>
         <div className="count-pills">
