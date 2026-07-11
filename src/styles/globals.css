@@ -145,7 +145,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 
 .rules-trigger { border: 1px solid #a58b58; border-radius: 8px; padding: 9px 13px; color: #765921; background: #f3e4bc; box-shadow: 0 3px 0 #b9a276; font-size: 10px; font-weight: 800; }
 .rules-trigger.compact { flex: 0 0 auto; padding: 7px 9px; color: #e4d4af; border-color: #d2b97766; background: #1b110d70; box-shadow: none; font-size: 8px; }
-.rules-modal { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; overflow: auto; background: #0a0806e8; backdrop-filter: blur(8px); }
+.rules-modal { position: fixed; z-index: 1000; inset: 0; width: 100vw; height: 100dvh; display: grid; place-items: center; padding: 18px; overflow: auto; background: #0a0806e8; backdrop-filter: blur(8px); }
 .rules-sheet { position: relative; width: min(720px, 100%); max-height: min(900px, 94vh); padding: 28px 34px 24px; overflow-y: auto; color: #33251d; text-align: left; border: 7px solid #5b3421; border-radius: 18px; background: linear-gradient(90deg, #fff9e8, #efe1c3); box-shadow: inset 0 0 0 2px #cfae69, 0 28px 70px #000c; }
 .rules-sheet>h2 { margin: 3px 0 8px; color: #205d51; font-family: 'Noto Serif SC', serif; font-size: 25px; }
 .rules-lead { margin: 0 0 15px; color: #6f5c49; font-size: 11px; line-height: 1.65; }
