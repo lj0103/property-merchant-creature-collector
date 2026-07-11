@@ -14,7 +14,7 @@ export function GameBoard() {
   const discounts = getDiscounts(player);
   const ordinaryGemsEmpty = ENERGY_TYPES.every((type) => state.energyPool[type] === 0);
   const mayPass = canPassTurn(state, player.id);
-  const actionHint = mayPass ? '没有任何可执行行动，可以跳过回合' : ordinaryGemsEmpty ? '普通宝石已空，请捕捉或预定精灵' : state.phase === 'playing' ? '每回合可拿宝石、捕捉或预定' : '请先归还多余宝石';
+  const actionHint = mayPass ? '没有任何可执行行动，可以跳过回合' : ordinaryGemsEmpty ? '五行灵珠已空，请捕捉或预定精灵' : state.phase === 'playing' ? '每回合可拿灵珠、捕捉或预定' : '请先归还多余灵珠';
   const toggle = (type: EnergyType) => setSelected((value) => value.includes(type) ? value.filter((item) => item !== type) : value.length < 3 ? [...value, type] : value);
   const valid = (selected.length === 3 && new Set(selected).size === 3) || (selected.length === 1 && state.energyPool[selected[0]] >= 4);
   const take = () => {
@@ -38,9 +38,9 @@ export function GameBoard() {
         </section>
         <div className="layout">
           <aside className="left-panel panel">
-            <div className="panel-heading"><span>五相宝石区</span><h2>公共宝石</h2><p>{actionHint}</p></div>
-            <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}宝石</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild" title="万能宝石不能直接拿取；预定公开精灵卡时，如果公共区还有万能宝石，会自动获得 1 枚。"><i>{ENERGY_ICONS.wild}</i><span>万能宝石<small className="wild-help">不可直接拿取 · 预定时获得</small></span><b>{state.energyPool.wild}</b></div></div>
-            <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同色宝石 ×2' : '拿取所选宝石'}</button>
+            <div className="panel-heading"><span>五行灵珠区</span><h2>公共灵珠</h2><p>{actionHint}</p></div>
+            <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}灵珠</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild" title="灵珠是万能资源，不能直接拿取；预定公开精灵卡时，如果公共区还有灵珠，会自动获得 1 枚。"><i>{ENERGY_ICONS.wild}</i><span>灵珠<small className="wild-help">万能 · 预定时获得</small></span><b>{state.energyPool.wild}</b></div></div>
+            <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同色灵珠 ×2' : '拿取所选灵珠'}</button>
             {mayPass ? <button className="pass-turn" onClick={state.passTurn}>当前无可执行行动 · 跳过回合</button> : <button className="text-btn" onClick={() => setSelected([])}>放回选择</button>}
             <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{state.availableBadges.map((badge) => <div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
           </aside>
@@ -50,13 +50,13 @@ export function GameBoard() {
           </section>
           <aside className="right-panel panel player-mat">
             <div className="profile"><span className="avatar large">{player.name.slice(0, 1)}</span><div><p className="eyebrow">近端玩家席</p><h2>{player.name}</h2></div><strong className="score">{getScore(player)}<small>/ {SCORE_TARGET}</small></strong></div>
-            <h3 className="section-label">持有宝石 <span>{tokenCount(player)}/10</span></h3>
+            <h3 className="section-label">持有灵珠 <span>{tokenCount(player)}/10</span></h3>
             <div className="wallet">{([...ENERGY_TYPES, 'wild'] as TokenType[]).map((type) => <button disabled={state.phase !== 'discarding' || player.energies[type] === 0} onClick={() => state.discardEnergy(type)} className={`token ${type}`} key={type}>{ENERGY_ICONS[type]} <b>{player.energies[type]}</b></button>)}</div>
-            {state.phase === 'discarding' && <p className="discard-tip">点击筹码，将持有数量归还至 10 枚</p>}
-            <h3 className="section-label">永久羁绊</h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>
+            {state.phase === 'discarding' && <p className="discard-tip">点击灵珠，将持有数量归还至 10 枚</p>}
+            <h3 className="section-label">永久羁绊 <span>永久折扣</span></h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} title={`${ENERGY_LABELS[type]}系永久羁绊：捕捉时永久减免 ${discounts[type]} 枚${ENERGY_LABELS[type]}灵珠，不会消耗`} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>
             <h3 className="section-label">预定区 <span>{player.reservedCards.length}/3</span></h3>
             <div className="reserved">{player.reservedCards.length ? player.reservedCards.map((card) => <CreatureCard card={card} player={player} source="reserved" key={card.id}/>) : <p>尚未压下任何预定牌</p>}</div>
-            <h3 className="section-label">桌边旅记 <span>当前持有</span></h3><PlayerGemSummary players={state.players} currentPlayerId={player.id}/>
+            <h3 className="section-label">桌边旅记 <span>灵珠 / 羁绊</span></h3><div className="resource-legend"><span><b>持</b>捕捉时消耗</span><span><b>绊</b>永久折扣不消耗</span></div><PlayerGemSummary players={state.players} currentPlayerId={player.id}/>
           </aside>
         </div>
       </div>

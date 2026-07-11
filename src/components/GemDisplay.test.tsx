@@ -8,7 +8,7 @@ const players: Player[] = [
     id: 'player-1',
     name: '玩家 1',
     energies: { flame: 2, aqua: 0, leaf: 1, spark: 0, mind: 0, wild: 1 },
-    capturedCards: [],
+    capturedCards: [{ id: 'fire-card', name: '火灵', level: 1, element: 'flame', points: 0, cost: {}, description: '测试羁绊' }],
     reservedCards: [],
     badges: [],
     turns: 1,
@@ -25,16 +25,18 @@ const players: Player[] = [
 ];
 
 describe('PlayerGemSummary', () => {
-  it('按玩家汇总当前持有的非零宝石数量', () => {
+  it('按玩家区分汇总持有灵珠和永久羁绊', () => {
     const html = renderToStaticMarkup(<PlayerGemSummary players={players} currentPlayerId="player-1"/>);
 
-    expect(html).toContain('各玩家当前持有宝石汇总');
+    expect(html).toContain('各玩家持有灵珠与永久羁绊汇总');
     expect(html).toContain('玩家 1');
-    expect(html).toContain('焰宝石 × 2');
-    expect(html).toContain('森宝石 × 1');
-    expect(html).toContain('万能宝石 × 1');
+    expect(html).toContain('持有灵珠会在捕捉精灵时消耗');
+    expect(html).toContain('永久羁绊来自已捕捉的精灵');
+    expect(html).toContain('火灵珠 × 2');
+    expect(html).toContain('火灵珠 × 1');
+    expect(html).toContain('木灵珠 × 1');
+    expect(html).toContain('灵珠 × 1');
     expect(html).toContain('玩家 2');
-    expect(html).toContain('暂无宝石');
-    expect(html).not.toContain('潮宝石 × 0');
+    expect(html).not.toContain('水灵珠 × 0');
   });
 });

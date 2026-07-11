@@ -13,9 +13,9 @@ export function SetupScreen({ onOnline }: { onOnline: () => void }) {
       <div className="setup-card">
         <div className="box-ribbon">桌游典藏版</div>
         <div className="brand-mark">✦</div>
-        <p className="eyebrow">五相能量 · 精灵契约 · 2–5 人</p>
+        <p className="eyebrow">五行灵珠 · 精灵契约 · 2–5 人</p>
         <h1>属性商人<br/><span>精灵收集家</span></h1>
-        <p className="intro">围坐雾岚长桌，采集五相能量，与奇妙生灵缔结羁绊。率先抵达 15 分，在最终轮守住荣光。</p>
+        <p className="intro">围坐雾岚长桌，采集五行灵珠，与奇妙生灵缔结永久羁绊。率先抵达 15 分，在最终轮守住荣光。</p>
         <div className="mode-switch">
           <button className="ghost dark" onClick={onOnline}>◎ 进入线上多人桌</button>
         </div>

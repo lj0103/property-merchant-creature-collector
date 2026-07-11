@@ -1,4 +1,4 @@
-import { ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
+import { ORB_LABELS, SCORE_TARGET } from '../data/constants';
 import {
   ENERGY_TYPES,
   type EnergyType,
@@ -51,7 +51,7 @@ const finishAction = (state: GameState): GameState => {
     return {
       ...state,
       phase: 'discarding',
-      notice: `请归还 ${tokenCount(player) - 10} 枚能量。`,
+      notice: `请归还 ${tokenCount(player) - 10} 枚灵珠。`,
     };
   }
 
@@ -109,15 +109,15 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
   if (state.phase === 'gameOver') return reject(state, '对局已经结束');
 
   if (action.type === 'discardEnergy') {
-    if (state.phase !== 'discarding') return reject(state, '当前无需归还能量');
-    if (currentPlayer.energies[action.energy] < 1) return reject(state, '没有这种能量可归还');
+    if (state.phase !== 'discarding') return reject(state, '当前无需归还灵珠');
+    if (currentPlayer.energies[action.energy] < 1) return reject(state, '没有这种灵珠可归还');
 
     currentPlayer.energies[action.energy] -= 1;
     state.energyPool[action.energy] += 1;
-    state.log = addLog(state, `${currentPlayer.name} 归还了 1 枚${ENERGY_LABELS[action.energy]}能量。`);
+    state.log = addLog(state, `${currentPlayer.name} 归还了 1 枚${ORB_LABELS[action.energy]}。`);
 
     if (tokenCount(currentPlayer) <= 10) return accept(finishAction(state));
-    return accept({ ...state, notice: `请再归还 ${tokenCount(currentPlayer) - 10} 枚能量。` });
+    return accept({ ...state, notice: `请再归还 ${tokenCount(currentPlayer) - 10} 枚灵珠。` });
   }
 
   if (state.phase !== 'playing') return reject(state, '当前不能执行这个行动');
@@ -133,8 +133,8 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
     const different = action.energies.length === 3 && unique.size === 3;
     const same = action.energies.length === 2 && unique.size === 1;
 
-    if (!different && !same) return reject(state, '请选择 3 种不同能量，或同种能量 2 枚');
-    if (action.energies.some((energy) => state.energyPool[energy] < 1)) return reject(state, '公共池中能量不足');
+    if (!different && !same) return reject(state, '请选择 3 种不同灵珠，或同种灵珠 2 枚');
+    if (action.energies.some((energy) => state.energyPool[energy] < 1)) return reject(state, '公共池中灵珠不足');
     if (same && state.energyPool[action.energies[0]] < 4) return reject(state, '拿取 2 枚时，公共池至少要有 4 枚');
 
     action.energies.forEach((energy) => {
@@ -143,7 +143,7 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
     });
     state.log = addLog(
       state,
-      `${currentPlayer.name} 获取了 ${action.energies.map((energy) => ENERGY_LABELS[energy]).join('、')} 能量。`,
+      `${currentPlayer.name} 获取了 ${action.energies.map((energy) => ORB_LABELS[energy]).join('、')}。`,
     );
     return accept(finishAction(state));
   }
@@ -166,7 +166,7 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
     if (state.energyPool.wild > 0) {
       state.energyPool.wild -= 1;
       currentPlayer.energies.wild += 1;
-      wildMessage = '，并获得 1 枚灵能量';
+      wildMessage = '，并获得 1 枚万能灵珠';
     }
 
     state.log = addLog(state, `${currentPlayer.name} 预定了「${card.name}」${wildMessage}。`);
@@ -191,7 +191,7 @@ export function applyGameAction(currentState: GameState, playerId: string, actio
     }
 
     if (!card) return reject(state, '找不到这张卡');
-    if (!canCapture(currentPlayer, card)) return reject(state, '能量不足，暂时无法捕捉');
+    if (!canCapture(currentPlayer, card)) return reject(state, '灵珠不足，暂时无法捕捉');
 
     const payment = paymentFor(currentPlayer, card);
     for (const token of [...ENERGY_TYPES, 'wild'] as TokenType[]) {
