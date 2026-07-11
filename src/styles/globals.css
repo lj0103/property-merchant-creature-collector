@@ -818,12 +818,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .player-gem-row>strong { font-size: 8px; }
 }
 
-/* 矮屏首页：五名玩家与开始按钮保持在同一屏内 */
-@media (min-width: 721px) and (max-height: 820px) {
-  .setup:not(.online-setup) { padding: 10px 18px; }
+/* 桌面首页默认紧凑：五名玩家与开始按钮保持在同一屏内 */
+@media (min-width: 721px) {
+  .setup:not(.online-setup) { padding: 10px 18px; overflow-y: hidden; }
   .setup:not(.online-setup) .setup-card {
-    width: min(620px, 100%);
-    padding: 20px 40px 17px;
+    width: min(580px, 100%);
+    padding: 18px 34px 15px;
     border-width: 6px;
     border-radius: 18px;
   }
@@ -839,6 +839,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .setup:not(.online-setup) .count-pills button { min-width: 43px; font-size: 15px; }
   .setup:not(.online-setup) .count-pills button small { font-size: 6px; }
   .setup:not(.online-setup) .name-grid { gap: 5px 8px; }
+  .setup:not(.online-setup) .name-grid.players-3,
+  .setup:not(.online-setup) .name-grid.players-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .setup:not(.online-setup) .name-grid label span { margin-bottom: 2px; font-size: 7px; }
   .setup:not(.online-setup) .name-grid input { padding: 7px 10px; font-size: 11px; }
   .setup:not(.online-setup) .primary.big { margin-top: 10px; padding: 10px 12px; font-size: 11px; }

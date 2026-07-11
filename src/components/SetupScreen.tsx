@@ -23,7 +23,7 @@ export function SetupScreen({ onOnline }: { onOnline: () => void }) {
         <div className="count-pills">
           {[2, 3, 4, 5].map((number) => <button className={count === number ? 'active' : ''} onClick={() => setCount(number)} key={number}>{number}<small>人</small></button>)}
         </div>
-        <div className="name-grid">
+        <div className={`name-grid players-${count}`}>
           {names.slice(0, count).map((name, index) => <label key={index}><span>席位 {index + 1}</span><input value={name} maxLength={12} onChange={(event) => setNames((value) => value.map((item, itemIndex) => itemIndex === index ? event.target.value : item))}/></label>)}
         </div>
         <button className="primary big" onClick={() => start(names.slice(0, count))}>铺开桌面，开始旅程 <span>→</span></button>
