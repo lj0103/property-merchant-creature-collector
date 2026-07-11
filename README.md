@@ -579,7 +579,7 @@ npm run test:all
 - 生产环境由 Express 提供构建后的 `dist` 目录，并为前端路由返回入口页面。
 - 生产前端默认连接当前页面域名，本地开发仍默认连接 `http://localhost:8787`。
 - 前端、会话 Cookie 与 WebSocket 使用同一 HTTPS 域名，避免第三方 Cookie 和跨域凭据兼容问题。
-- Blueprint 配置新加坡区域、健康检查、主分支自动部署和免费实例规格。
+- Blueprint 配置新加坡区域、健康检查、主分支自动部署和免费实例规格；生产构建显式安装 Vite、TypeScript、Prisma 与 tsx 等构建工具。
 
 验收结果：
 
