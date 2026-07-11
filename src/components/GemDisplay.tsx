@@ -1,18 +1,12 @@
-import { Fragment } from 'react';
 import { ENERGY_ICONS, ENERGY_LABELS } from '../data/constants';
-import type { EnergyType, TokenType } from '../game/types';
+import { ENERGY_TYPES, type EnergyType, type Player, type TokenType } from '../game/types';
 
-const LABEL_TO_TYPE: Record<string, TokenType> = {
-  焰: 'flame',
-  潮: 'aqua',
-  森: 'leaf',
-  雷: 'spark',
-  念: 'mind',
-  灵: 'wild',
-};
+const TOKEN_TYPES: TokenType[] = [...ENERGY_TYPES, 'wild'];
+type GemSize = 'small' | 'inline' | 'summary' | 'cost';
 
-export function GemIcon({ type, count, size = 'small' }: { type: TokenType; count?: number; size?: 'small' | 'inline' }) {
-  const label = `${ENERGY_LABELS[type]}宝石${count === undefined ? '' : ` × ${count}`}`;
+export function GemIcon({ type, count, size = 'small' }: { type: TokenType; count?: number; size?: GemSize }) {
+  const gemName = type === 'wild' ? '万能' : ENERGY_LABELS[type];
+  const label = `${gemName}宝石${count === undefined ? '' : ` × ${count}`}`;
   return <span className={`gem-icon gem-${size} ${type}`} title={label} aria-label={label}><i>{ENERGY_ICONS[type]}</i>{count !== undefined && <b>{count}</b>}</span>;
 }
 
@@ -20,9 +14,20 @@ export function GemRequirements({ requirement }: { requirement: Partial<Record<E
   return <div className="badge-requirements" aria-label="徽章所需宝石">{Object.entries(requirement).map(([type, count]) => <GemIcon type={type as EnergyType} count={count} key={type}/>)}</div>;
 }
 
-export function GemLog({ message }: { message: string }) {
-  return <>{message.split(/(焰|潮|森|雷|念|灵)/g).map((segment, index) => {
-    const type = LABEL_TO_TYPE[segment];
-    return <Fragment key={`${segment}-${index}`}>{type ? <GemIcon type={type} size="inline"/> : segment}</Fragment>;
-  })}</>;
+export function PlayerGemSummary({ players, currentPlayerId }: { players: Player[]; currentPlayerId?: string }) {
+  return (
+    <div className="player-gem-summary" aria-label="各玩家当前持有宝石汇总">
+      {players.map((player) => {
+        const gems = TOKEN_TYPES.filter((type) => player.energies[type] > 0);
+        return (
+          <div className={`player-gem-row ${player.id === currentPlayerId ? 'current' : ''}`} key={player.id}>
+            <strong title={player.name}>{player.name}</strong>
+            <div className="player-gem-counts">
+              {gems.length > 0 ? gems.map((type) => <GemIcon type={type} count={player.energies[type]} size="summary" key={type}/>) : <small>暂无宝石</small>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

@@ -335,7 +335,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   position: relative;
   min-height: 60px;
   display: grid;
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
   gap: 5px;
   padding: 7px;
@@ -347,7 +347,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   box-shadow: inset 0 0 12px #0009;
 }
 .energy i {
-  grid-row: 1 / 3;
+  grid-row: auto;
   width: 34px;
   aspect-ratio: 1;
   display: grid;
@@ -361,8 +361,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 }
 .energy span { color: #afa38e; font-size: 9px; }
 .energy span small { display: block; margin-top: 1px; color: #d4bd7e; font-size: 6px; line-height: 1.2; }
-.energy b { font-size: 17px; line-height: 1; }
-.energy.wild { grid-column: 1 / -1; grid-template-columns: 34px 1fr auto; }
+.energy b { position: relative; z-index: 2; min-width: 18px; color: #fff4d4; font-size: 17px; line-height: 1; text-align: right; }
+.energy.wild { grid-column: 1 / -1; }
 .energy.selected { transform: translateY(-3px); border-color: #f0d074; box-shadow: 0 0 0 2px #f0d074, 0 8px 14px #0008; }
 .energy:disabled { opacity: .45; }
 .left-panel>.primary { margin-top: 13px; }
@@ -509,8 +509,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 
 /* 宝石视觉系统 */
 .energy i {
-  width: 40px;
-  height: 36px;
+  width: 34px;
+  height: 32px;
   border: 0;
   border-radius: 0;
   clip-path: var(--gem-clip);
@@ -525,12 +525,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   box-shadow: inset 0 0 0 2px #ffffff45, inset 0 -9px 14px #0005;
   text-shadow: 0 2px 5px #000b;
 }
-.energy.flame i { width: 38px; height: 38px; }
-.energy.aqua i { width: 40px; height: 36px; }
-.energy.leaf i { width: 34px; height: 40px; }
-.energy.spark i { width: 33px; height: 40px; }
-.energy.mind i { width: 36px; height: 36px; }
-.energy.wild i { width: 36px; height: 36px; }
+.energy.flame i { width: 32px; height: 32px; }
+.energy.aqua i { width: 34px; height: 31px; }
+.energy.leaf i { width: 28px; height: 34px; }
+.energy.spark i { width: 28px; height: 34px; }
+.energy.mind i { width: 30px; height: 30px; }
+.energy.wild i { width: 31px; height: 31px; }
 
 .wallet .token,
 .discounts span,
@@ -567,9 +567,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   flex: 0 0 auto;
   color: #fffbed;
+  vertical-align: middle;
+}
+.gem-icon i {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
   clip-path: var(--gem-clip);
   background:
     linear-gradient(140deg, #ffffffa0 0 12%, transparent 13% 48%, #ffffff38 49% 56%, transparent 57%),
@@ -581,12 +587,25 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
       color-mix(in srgb, var(--color), white 35%));
   text-shadow: 0 1px 2px #000c;
   box-shadow: inset 0 0 0 1px #ffffff55;
-  vertical-align: middle;
+  font-style: normal;
 }
-.gem-icon i { font-style: normal; font-size: .85em; }
-.gem-icon b { font-size: .8em; }
-.gem-small { width: 28px; height: 24px; font-size: 9px; }
-.gem-inline { width: 16px; height: 15px; margin: 0 2px; font-size: 7px; vertical-align: -3px; }
+.gem-icon b { min-width: 8px; color: #f9e5b2; font-size: .8em; line-height: 1; text-align: center; text-shadow: 0 1px 2px #000; }
+.gem-small { min-width: 27px; min-height: 20px; font-size: 9px; }
+.gem-small i { width: 18px; height: 18px; font-size: 7px; }
+.gem-inline { min-width: 14px; min-height: 14px; margin: 0 2px; font-size: 7px; vertical-align: -3px; }
+.gem-inline i { width: 14px; height: 14px; font-size: 6px; }
+.gem-cost { min-width: 22px; min-height: 16px; font-size: 7px; }
+.gem-cost i { width: 15px; height: 15px; font-size: 6px; }
+.gem-summary { min-width: 21px; min-height: 16px; gap: 1px; font-size: 7px; }
+.gem-summary i { width: 14px; height: 14px; font-size: 6px; }
+
+.player-gem-summary { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; overflow: hidden; }
+.player-gem-row { min-width: 0; display: grid; grid-template-columns: minmax(38px, 28%) 1fr; align-items: center; gap: 4px; min-height: 27px; padding: 3px 4px; border-bottom: 1px dashed #ffffff13; border-radius: 4px; }
+.player-gem-row.current { color: #ffe6a0; background: #d2a74a12; box-shadow: inset 2px 0 #d7b354; }
+.player-gem-row>strong { overflow: hidden; color: #b9ab92; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.player-gem-row.current>strong { color: #ffe3a0; }
+.player-gem-counts { min-width: 0; display: flex; align-items: center; gap: 3px; flex-wrap: nowrap; }
+.player-gem-counts small { color: #776d60; font-size: 7px; }
 .badge>i {
   border: 0;
   border-radius: 0;
@@ -664,15 +683,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .energy {
     min-height: 42px;
     height: 42px;
-    grid-template-columns: 31px 1fr;
+    grid-template-columns: 27px minmax(0, 1fr) auto;
     gap: 2px;
     padding: 3px 4px;
     border-radius: 7px;
   }
-  .energy i { width: 31px; height: 29px; }
+  .energy.flame i { width: 25px; height: 25px; }
+  .energy.aqua i { width: 26px; height: 24px; }
+  .energy.leaf i { width: 22px; height: 27px; }
+  .energy.spark i { width: 22px; height: 27px; }
+  .energy.mind i { width: 24px; height: 24px; }
+  .energy.wild i { width: 25px; height: 25px; }
   .energy span { font-size: 7px; }
-  .energy b { font-size: 14px; }
-  .energy.wild { grid-template-columns: 31px 1fr auto; }
+  .energy b { min-width: 12px; font-size: 14px; }
   .left-panel>.primary { margin-top: 6px; padding: 7px 4px; font-size: 9px; box-shadow: inset 0 1px #ffffff35, 0 2px 0 #0d3029; }
   .left-panel>.text-btn { padding: 4px; font-size: 8px; }
   .left-panel>.pass-turn { padding: 4px 3px; font-size: 7px; }
@@ -692,7 +715,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .badge-copy { min-width: 0; gap: 1px; }
   .badge strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; }
   .badge-requirements { gap: 2px; }
-  .gem-small { width: 22px; height: 19px; font-size: 7px; }
+  .gem-small { min-width: 23px; min-height: 17px; font-size: 7px; }
+  .gem-small i { width: 15px; height: 15px; font-size: 6px; }
 
   .market {
     height: 100%;
@@ -766,8 +790,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .reserved .card-top { min-height: 12px; }
   .reserved .costs { min-height: 15px; }
   .reserved>p { padding: 7px; font-size: 7px; }
-  .log { flex: 1 1 auto; min-height: 0; max-height: none; overflow: hidden; }
-  .log p { padding: 4px 0; font-size: 7px; line-height: 1.3; }
+  .player-gem-row { min-height: 23px; padding: 2px 3px; }
+  .player-gem-row>strong { font-size: 7px; }
 }
 
 @media (min-width: 1001px) and (max-height: 820px) {
@@ -779,7 +803,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 
 @media (min-width: 1600px) and (min-height: 900px) {
   .badge strong { font-size: 9px; }
-  .gem-small { width: 27px; height: 23px; font-size: 8px; }
-  .log p { font-size: 8px; }
-  .gem-inline { width: 18px; height: 17px; font-size: 8px; }
+  .gem-small { min-width: 27px; min-height: 21px; font-size: 8px; }
+  .gem-small i { width: 19px; height: 19px; }
+  .player-gem-row>strong { font-size: 8px; }
 }

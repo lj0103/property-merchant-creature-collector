@@ -4,7 +4,7 @@ import { ENERGY_ICONS, ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import { useGameStore } from '../store/gameStore';
 import { CreatureCard } from './CreatureCard';
-import { GemLog, GemRequirements } from './GemDisplay';
+import { GemRequirements, PlayerGemSummary } from './GemDisplay';
 import { canPassTurn } from '../game/actions';
 
 export function GameBoard() {
@@ -56,7 +56,7 @@ export function GameBoard() {
             <h3 className="section-label">永久羁绊</h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>
             <h3 className="section-label">预定区 <span>{player.reservedCards.length}/3</span></h3>
             <div className="reserved">{player.reservedCards.length ? player.reservedCards.map((card) => <CreatureCard card={card} player={player} source="reserved" key={card.id}/>) : <p>尚未压下任何预定牌</p>}</div>
-            <h3 className="section-label">桌边旅记</h3><div className="log">{state.log.slice(0, 6).map((entry) => <p key={entry.id}><GemLog message={entry.message}/></p>)}</div>
+            <h3 className="section-label">桌边旅记 <span>当前持有</span></h3><PlayerGemSummary players={state.players} currentPlayerId={player.id}/>
           </aside>
         </div>
       </div>

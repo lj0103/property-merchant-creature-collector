@@ -2,6 +2,7 @@ import type { CreatureCard as CardType, Phase, Player } from '../game/types';
 import { ENERGY_ICONS, ENERGY_LABELS } from '../data/constants';
 import { canCapture, getEffectiveCost } from '../game/rules';
 import { useGameStore } from '../store/gameStore';
+import { GemIcon } from './GemDisplay';
 
 interface CreatureCardProps {
   card: CardType;
@@ -45,7 +46,7 @@ export function CreatureCard({
       <p className="flavor">「{card.description}」</p>
       <div className="cost-label">所需宝石</div>
       <div className="costs">
-        {Object.entries(cost).filter(([, count]) => count > 0).map(([type, count]) => <span className={`token mini ${type}`} title={ENERGY_LABELS[type as keyof typeof ENERGY_LABELS]} key={type}>{ENERGY_ICONS[type as keyof typeof ENERGY_ICONS]} {count}</span>)}
+        {Object.entries(cost).filter(([, count]) => count > 0).map(([type, count]) => <GemIcon type={type as keyof typeof cost} count={count} size="cost" key={type}/>)}
         {Object.values(cost).every((count) => count === 0) && <span className="free">无需能量</span>}
       </div>
       <div className="card-actions">

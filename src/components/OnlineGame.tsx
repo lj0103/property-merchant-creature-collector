@@ -6,7 +6,7 @@ import { ENERGY_TYPES, type EnergyType, type TokenType } from '../game/types';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import type { ClientToServerEvents, RoomPayload, ServerToClientEvents, SessionPayload } from '../multiplayer/protocol';
 import { CreatureCard } from './CreatureCard';
-import { GemLog, GemRequirements } from './GemDisplay';
+import { GemRequirements, PlayerGemSummary } from './GemDisplay';
 
 const sessionKey = 'property-merchant-online-session';
 const apiUrl = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8787';
@@ -243,7 +243,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
             <h3 className="section-label">预定精灵 <span>{activePlayer.reservedCards.length}/3</span></h3>
             <div className="reserved">{activePlayer.reservedCards.length?activePlayer.reservedCards.map((card)=><CreatureCard card={card} player={activePlayer} source="reserved" disabled={!isMyTurn} phase={game.phase} onCapture={(cardId,source)=>sendAction({type:'captureCard',cardId,source})} key={card.id}/>):<p>尚未预定精灵</p>}</div>
           </>}
-          <h3 className="section-label">近期旅记</h3><div className="log">{game.log.slice(0,6).map((entry)=><p key={entry.id}><GemLog message={entry.message}/></p>)}</div>
+          <h3 className="section-label">桌边旅记 <span>当前持有</span></h3><PlayerGemSummary players={game.players} currentPlayerId={currentPlayer?.id}/>
         </aside>
       </div>
       </div>
