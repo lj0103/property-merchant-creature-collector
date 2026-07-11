@@ -12,7 +12,7 @@ import { MatchRecord } from './MatchRecord';
 import { GameRulesDialog } from './GameRulesDialog';
 
 const sessionKey = 'property-merchant-online-session';
-const apiUrl = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8787';
+const apiUrl = import.meta.env.VITE_SOCKET_URL ?? (import.meta.env.DEV ? 'http://localhost:8787' : window.location.origin);
 
 type OnlineSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 

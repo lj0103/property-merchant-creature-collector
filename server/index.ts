@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
+import { resolve } from 'node:path';
 import { Server } from 'socket.io';
 import { z } from 'zod';
 import { applyGameAction, type GameAction } from '../src/game/actions';
@@ -225,6 +226,15 @@ app.post('/api/session', async (request, response) => {
 app.get('/health', (_request, response) => {
   response.json({ ok: true, storage: storage.driver, realtime: realtime.driver, rooms: rooms.size, time: now() });
 });
+
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = resolve(process.cwd(), 'dist');
+  app.use(express.static(clientDist));
+  app.use((request, response, next) => {
+    if (request.method !== 'GET' || !request.accepts('html')) return next();
+    return response.sendFile(resolve(clientDist, 'index.html'));
+  });
+}
 
 io.on('room:sync', (room) => {
   if (room.status === 'closed') rooms.delete(room.id);

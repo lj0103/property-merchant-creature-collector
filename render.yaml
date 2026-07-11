@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: property-merchant-lj0103
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://property-merchant-lj0103.onrender.com
+      - key: STORAGE_DRIVER
+        value: json
