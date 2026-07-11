@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Badge } from './types';
 import { createGame } from './setup';
-import { canCapture, canClaimBadge, getEffectiveCost, getWinners } from './rules';
+import { canCapture, canClaimBadge, getEffectiveCost, getWinners, paymentFor } from './rules';
 import { applyGameAction, canPassTurn } from './actions';
 
 describe('核心规则', () => {
@@ -32,7 +32,13 @@ describe('核心规则', () => {
     Object.entries(cost).forEach(([type, count]) => {
       player.energies[type as keyof typeof player.energies] = count;
     });
+    const firstCostType = Object.keys(cost).find((type) => cost[type as keyof typeof cost] > 0) as keyof typeof cost;
+    player.energies[firstCostType] -= 1;
+    player.energies.wild = 1;
     expect(canCapture(player, card)).toBe(true);
+    const payment = paymentFor(player, card);
+    expect(payment.wild).toBe(1);
+    expect(payment[firstCostType]).toBe(cost[firstCostType] - 1);
   });
 
   it('徽章仅统计永久羁绊，不统计持有灵珠', () => {

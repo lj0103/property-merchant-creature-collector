@@ -46,7 +46,7 @@ export function GameBoard() {
             <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2><p>仅统计永久羁绊，持有灵珠不能代替</p></div>{state.availableBadges.map((badge) => <div className="badge" title="达成条件仅计算已捕捉精灵提供的永久羁绊" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><div className="badge-condition"><span>绊</span><GemRequirements requirement={badge.requirement}/></div></div></div>)}</div>
           </aside>
           <section className="market">
-            <div className="market-title"><div><p className="eyebrow">中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>剩余牌量 · {[3, 2, 1].map((level) => { const tier = level as 1 | 2 | 3; return `L${level} ${state.decks[tier].length + state.market[tier].length}/${CARD_COUNTS_BY_LEVEL[tier]}`; }).join(' / ')}</p></div>
+            <div className="market-title"><div><p className="eyebrow">中央公共牌区 · 羁绊先抵扣，灵珠付余额</p><h2>雾岚精灵市集</h2></div><p>剩余牌量 · {[3, 2, 1].map((level) => { const tier = level as 1 | 2 | 3; return `L${level} ${state.decks[tier].length + state.market[tier].length}/${CARD_COUNTS_BY_LEVEL[tier]}`; }).join(' / ')}</p></div>
             {([3, 2, 1] as const).map((level) => <section className="market-row" key={level}><div className={`deck level-${level}`}><small>精灵牌库</small><b>等级 {level}</b><span>{state.decks[level].length}</span></div><div className="cards">{state.market[level].map((card) => <CreatureCard card={card} player={player} key={card.id}/>)}</div></section>)}
           </section>
           <aside className="right-panel panel player-mat">
@@ -55,7 +55,7 @@ export function GameBoard() {
             <div className="wallet">{([...ENERGY_TYPES, 'wild'] as TokenType[]).map((type) => <button disabled={state.phase !== 'discarding' || player.energies[type] === 0} onClick={() => state.discardEnergy(type)} className={`token ${type}`} key={type}>{ENERGY_ICONS[type]} <b>{player.energies[type]}</b></button>)}</div>
             {state.phase === 'discarding' && <p className="discard-tip">点击灵珠，将持有数量归还至 10 枚</p>}
             <h3 className="section-label">永久羁绊 <span>永久折扣</span></h3><div className="discounts">{ENERGY_TYPES.map((type) => <span className={type} title={`${ENERGY_LABELS[type]}系永久羁绊：捕捉时永久减免 ${discounts[type]} 枚${ENERGY_LABELS[type]}灵珠，不会消耗`} key={type}>{ENERGY_ICONS[type]} {discounts[type]}</span>)}</div>
-            <h3 className="section-label">预定区 <span>{player.reservedCards.length}/3</span></h3>
+            <h3 className="section-label">预定区 <small className="section-help">羁绊已自动抵扣</small><span>{player.reservedCards.length}/3</span></h3>
             <div className="reserved">{player.reservedCards.length ? player.reservedCards.map((card) => <CreatureCard card={card} player={player} source="reserved" key={card.id}/>) : <p>尚未压下任何预定牌</p>}</div>
             <h3 className="section-label">桌边旅记 <span>灵珠 / 羁绊</span></h3><div className="resource-legend"><span><b>持</b>捕捉时消耗</span><span><b>绊</b>永久折扣不消耗</span></div><PlayerGemSummary players={state.players} currentPlayerId={player.id}/>
           </aside>
