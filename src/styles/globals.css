@@ -517,17 +517,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .creature-art { height: 72px; }
 }
 
-/* 宝石视觉系统 */
+/* 灵珠视觉系统 */
 .energy i {
   width: 32px;
   height: 32px;
   border: 0;
   border-radius: 0;
   clip-path: var(--gem-clip);
-  background:
-    radial-gradient(circle at 31% 22%, #ffffffdd 0 7%, #ffffff55 8% 15%, transparent 16%),
-    radial-gradient(circle at 36% 30%, color-mix(in srgb, var(--chip), white 52%), var(--chip) 52%, color-mix(in srgb, var(--chip), black 48%) 100%);
-  box-shadow: inset -7px -9px 12px #0006, inset 5px 5px 8px #ffffff30, 0 3px 5px #0007;
   text-shadow: 0 2px 5px #000b;
 }
 .energy.flame i, .energy.aqua i, .energy.leaf i, .energy.spark i, .energy.mind i, .energy.wild i { width: 32px; height: 32px; }
@@ -538,12 +534,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   border: 0;
   border-radius: 50%;
   clip-path: var(--gem-clip);
-  background:
-    radial-gradient(circle at 31% 22%, #ffffffd8 0 7%, #ffffff4d 8% 15%, transparent 16%),
-    radial-gradient(circle at 36% 30%, color-mix(in srgb, var(--color), white 48%), var(--color) 52%, color-mix(in srgb, var(--color), black 46%) 100%);
   color: #fff9e9;
   text-shadow: 0 1px 3px #000c;
-  box-shadow: inset 0 0 0 1px #ffffff55;
 }
 
 .wallet .token {
@@ -573,12 +565,18 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   flex: 0 0 auto;
   place-items: center;
   clip-path: var(--gem-clip);
+  text-shadow: 0 1px 2px #000c;
+  font-style: normal;
+}
+.energy i,
+.wallet .token,
+.discounts span,
+.token.mini,
+.gem-icon i {
   background:
     radial-gradient(circle at 31% 22%, #ffffffdd 0 7%, #ffffff55 8% 15%, transparent 16%),
     radial-gradient(circle at 36% 30%, color-mix(in srgb, var(--color), white 50%), var(--color) 52%, color-mix(in srgb, var(--color), black 48%) 100%);
-  text-shadow: 0 1px 2px #000c;
-  box-shadow: inset 0 0 0 1px #ffffff55;
-  font-style: normal;
+  box-shadow: inset -6px -7px 10px #0006, inset 4px 4px 7px #ffffff30, inset 0 0 0 1px #ffffff55, 0 2px 4px #0007;
 }
 .gem-icon b { min-width: 8px; color: #f9e5b2; font-size: .8em; line-height: 1; text-align: center; text-shadow: 0 1px 2px #000; }
 .gem-small { min-width: 27px; min-height: 20px; font-size: 9px; }
