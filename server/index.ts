@@ -399,12 +399,11 @@ io.on('connection', (socket) => {
       await realtime.withRoomLock(room.id, async () => {
         if (!ensureLobby(room)) return reply({ error: error('ROOM_LOCKED', '对局已经开始') });
         room.status = 'playing';
-        room.gameState = createGame(room.players.map((player) => player.displayName));
-        room.gameState.players = room.gameState.players.map((player, index) => ({
-          ...player,
-          id: room.players[index].playerId,
-          name: room.players[index].displayName,
-        }));
+        room.gameState = createGame(
+          room.players.map((player) => player.displayName),
+          room.gameState?.matchStats,
+          room.players.map((player) => player.playerId),
+        );
         touchRoom(room);
         await persist();
         broadcastRoom(room);
@@ -454,7 +453,6 @@ io.on('connection', (socket) => {
     try {
       await realtime.withRoomLock(room.id, async () => {
         room.status = 'lobby';
-        room.gameState = undefined;
         room.processedActionIds = [];
         room.players = room.players.map((player, index) => ({
           ...player,

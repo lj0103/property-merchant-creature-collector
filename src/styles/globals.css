@@ -248,6 +248,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 .target { margin-left: auto; }
 .target strong { color: #f3e5bc; font-size: 23px; }
 
+.match-record { min-width: 0; }
+.match-record-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.match-record-title strong { color: #e5c672; font-size: 8px; letter-spacing: .08em; }
+.match-record-title span { color: #938670; font-size: 7px; }
+.match-wins { min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 3px; margin-top: 3px; }
+.match-wins>span { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 3px; padding: 3px 5px; border: 1px solid #d1ae5f33; border-radius: 5px; background: #0f2f2975; }
+.match-wins b { overflow: hidden; color: #e4d8bf; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.match-wins em { flex: 0 0 auto; color: #f2cf72; font-size: 7px; font-style: normal; font-weight: 800; }
+.match-record.header { width: clamp(240px, 29vw, 450px); padding: 4px 7px; border-right: 1px solid #e3c77e22; border-left: 1px solid #e3c77e22; }
+
 .notice {
   position: fixed;
   z-index: 30;
@@ -461,6 +471,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 .ranking { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #d1c09c; }
 .ranking span { color: #7b6d5d; }
 .modal .primary { margin-top: 20px; }
+.match-record.modal { margin-top: 14px; padding: 10px; border: 1px solid #b79b684f; border-radius: 8px; background: #eadcbd80; }
+.match-record.modal .match-record-title strong { color: #62481e; font-size: 10px; }
+.match-record.modal .match-record-title span { color: #806f59; font-size: 9px; }
+.match-record.modal .match-wins>span { background: #fff8e2; border-color: #b89b5e55; }
+.match-record.modal .match-wins b { color: #4a392b; font-size: 9px; }
+.match-record.modal .match-wins em { color: #9b681c; font-size: 9px; }
+.match-record.lobby { margin: 12px 0; padding: 10px; border: 1px solid #bba574; border-radius: 8px; background: #f2e5c7; }
+.match-record.lobby .match-record-title strong, .match-record.lobby .match-wins b { color: #3e5f55; }
+.match-record.lobby .match-wins>span { border-color: #9c86584d; background: #fffaf0; }
 
 @media (max-width: 1450px) {
   .layout { grid-template-columns: 210px minmax(680px, 1fr); }
@@ -473,6 +492,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 @media (max-width: 1000px) {
   .board { padding: 0 10px 24px; }
   .board>header { gap: 12px; padding: 9px 12px; }
+  .board>header { flex-wrap: wrap; }
+  .match-record.header { order: 5; width: 100%; }
   .turn, .target { min-width: auto; padding-left: 10px; }
   .table-surface { margin-top: 26px; padding: 14px 12px 20px; border-width: 9px; border-radius: 32px; }
   .player-strip { width: calc(100% - 20px); overflow-x: auto; grid-template-columns: repeat(5, minmax(150px, 1fr)); margin-top: -44px; padding: 0 10px 10px; }

@@ -29,6 +29,10 @@ export const cloneGameState = (state: GameState): GameState => ({
   market: structuredClone(state.market),
   availableBadges: structuredClone(state.availableBadges),
   winnerIds: [...state.winnerIds],
+  matchStats: {
+    gamesPlayed: state.matchStats?.gamesPlayed ?? 0,
+    wins: { ...(state.matchStats?.wins ?? {}) },
+  },
   log: structuredClone(state.log),
 });
 
@@ -73,10 +77,17 @@ const finishAction = (state: GameState): GameState => {
   }
 
   if (state.finalRoundTriggered && state.players.every((p) => p.turns >= (state.targetTurns ?? 0))) {
+    const winnerIds = getWinners(state.players);
+    const previousStats = state.matchStats ?? { gamesPlayed: 0, wins: {} };
+    const wins = { ...previousStats.wins };
+    winnerIds.forEach((winnerId) => {
+      wins[winnerId] = (wins[winnerId] ?? 0) + 1;
+    });
     return {
       ...state,
       phase: 'gameOver',
-      winnerIds: getWinners(state.players),
+      winnerIds,
+      matchStats: { gamesPlayed: previousStats.gamesPlayed + 1, wins },
       notice: '对局结束',
     };
   }

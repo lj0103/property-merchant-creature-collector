@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore';
 import { CreatureCard } from './CreatureCard';
 import { GemRequirements, PlayerGemSummary } from './GemDisplay';
 import { canPassTurn } from '../game/actions';
+import { MatchRecord } from './MatchRecord';
 
 export function GameBoard() {
   const state = useGameStore();
@@ -28,6 +29,7 @@ export function GameBoard() {
       <header>
         <div className="game-brand"><span className="mini-mark">✦</span><div><p className="eyebrow">雾岚长桌</p><h1>精灵收集家</h1></div></div>
         <div className="turn"><span>行动席位</span><strong>{player.name}</strong></div>
+        <MatchRecord players={state.players} stats={state.matchStats} phase={state.phase}/>
         <div className="target"><span>{state.finalRoundTriggered ? '最终轮进行中' : '目标声望'}</span><strong>{SCORE_TARGET}</strong></div>
         <button className="ghost" onClick={() => confirm('确定收起当前桌面并返回首页？') && state.resetGame()}>收起桌面</button>
       </header>
@@ -61,7 +63,7 @@ export function GameBoard() {
           </aside>
         </div>
       </div>
-      {state.phase === 'gameOver' && <div className="modal"><div><span className="trophy">✦</span><p className="eyebrow">本桌旅程告一段落</p><h2>{state.winnerIds.length > 1 ? '并列胜利！' : '胜利属于'} {state.players.filter((item) => state.winnerIds.includes(item.id)).map((item) => item.name).join('、')}</h2>{rankPlayers(state.players).map((item, index) => <p className="ranking" key={item.id}><b>#{index + 1} {item.name}</b><span>{getScore(item)} 声望 · {item.capturedCards.length} 张牌</span></p>)}<button className="primary big" onClick={state.resetGame}>重新铺桌</button></div></div>}
+      {state.phase === 'gameOver' && <div className="modal"><div><span className="trophy">✦</span><p className="eyebrow">本桌旅程告一段落</p><h2>{state.winnerIds.length > 1 ? '并列胜利！' : '胜利属于'} {state.players.filter((item) => state.winnerIds.includes(item.id)).map((item) => item.name).join('、')}</h2>{rankPlayers(state.players).map((item, index) => <p className="ranking" key={item.id}><b>#{index + 1} {item.name}</b><span>{getScore(item)} 声望 · {item.capturedCards.length} 张牌</span></p>)}<MatchRecord players={state.players} stats={state.matchStats} phase={state.phase} variant="modal"/><button className="primary big" onClick={state.rematch}>再来一局</button><button className="text-btn" onClick={state.resetGame}>结束本次对局并返回首页</button></div></div>}
     </main>
   );
 }

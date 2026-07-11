@@ -11,4 +11,5 @@ export type Market = Record<Level, CreatureCard[]>;
 export type Decks = Record<Level, CreatureCard[]>;
 export type Phase = 'setup' | 'playing' | 'discarding' | 'gameOver';
 export interface LogEntry { id: string; message: string }
-export interface GameState { players: Player[]; currentPlayerIndex: number; energyPool: EnergyMap; decks: Decks; market: Market; availableBadges: Badge[]; phase: Phase; finalRoundTriggered: boolean; targetTurns?: number; winnerIds: string[]; log: LogEntry[]; notice?: string }
+export interface MatchStats { gamesPlayed: number; wins: Record<string, number> }
+export interface GameState { players: Player[]; currentPlayerIndex: number; energyPool: EnergyMap; decks: Decks; market: Market; availableBadges: Badge[]; phase: Phase; finalRoundTriggered: boolean; targetTurns?: number; winnerIds: string[]; matchStats: MatchStats; log: LogEntry[]; notice?: string }

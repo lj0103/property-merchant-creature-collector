@@ -8,6 +8,7 @@ import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import type { ClientToServerEvents, RoomPayload, ServerToClientEvents, SessionPayload } from '../multiplayer/protocol';
 import { CreatureCard } from './CreatureCard';
 import { GemRequirements, PlayerGemSummary } from './GemDisplay';
+import { MatchRecord } from './MatchRecord';
 
 const sessionKey = 'property-merchant-online-session';
 const apiUrl = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8787';
@@ -168,7 +169,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
     );
   };
 
-  if (!room || !game) {
+  if (!room || room.status === 'lobby' || !game) {
     return (
       <main className="setup online-setup">
         <div className="setup-card online-card">
@@ -195,6 +196,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
             <h2>{room.code}</h2>
             <p className="intro">把房间码发给朋友。所有玩家准备后，房主可以开始。</p>
             <div className="lobby-players">{room.players.map((player)=><p key={player.playerId}><b>{player.displayName}</b><span>{player.isHost?'房主':player.isReady?'已准备':'未准备'} · {player.connectionState}</span></p>)}</div>
+            {room.gameState && <MatchRecord players={room.gameState.players} stats={room.gameState.matchStats} phase={room.gameState.phase} variant="lobby"/>}
             <div className="lobby-actions">
               <button className="primary" onClick={()=>setReady(!me?.isReady)}>{me?.isReady?'取消准备':'准备'}</button>
               {me?.isHost&&<button className="primary" onClick={startGame}>开始游戏</button>}
@@ -212,6 +214,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
       <header>
         <div className="game-brand"><span className="mini-mark">✦</span><div><p className="eyebrow">线上长桌 · {room.code}</p><h1>精灵收集家</h1></div></div>
         <div className="turn"><span>{isMyTurn?'轮到你的席位':'当前行动席'}</span><strong>{currentPlayer?.name}</strong></div>
+        <MatchRecord players={game.players} stats={game.matchStats} phase={game.phase}/>
         <div className="target"><span>{game.finalRoundTriggered?'最终轮进行中':'目标声望'}</span><strong>{SCORE_TARGET}</strong></div>
         <button className="ghost" onClick={leaveRoom}>离开长桌</button>
       </header>
@@ -248,7 +251,7 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
         </aside>
       </div>
       </div>
-      {game.phase==='gameOver'&&<div className="modal"><div><span className="trophy">✦</span><p className="eyebrow">线上对局结束</p><h2>{game.winnerIds.length>1?'并列胜利！':'胜利属于'} {game.players.filter((player)=>game.winnerIds.includes(player.id)).map((player)=>player.name).join('、')}</h2>{rankPlayers(game.players).map((player,index)=><p className="ranking" key={player.id}><b>#{index+1} {player.name}</b><span>{getScore(player)} 分 · {player.capturedCards.length} 张卡</span></p>)}{me?.isHost&&<button className="primary big" onClick={restartGame}>再来一局</button>}</div></div>}
+      {game.phase==='gameOver'&&<div className="modal"><div><span className="trophy">✦</span><p className="eyebrow">线上对局结束</p><h2>{game.winnerIds.length>1?'并列胜利！':'胜利属于'} {game.players.filter((player)=>game.winnerIds.includes(player.id)).map((player)=>player.name).join('、')}</h2>{rankPlayers(game.players).map((player,index)=><p className="ranking" key={player.id}><b>#{index+1} {player.name}</b><span>{getScore(player)} 分 · {player.capturedCards.length} 张卡</span></p>)}<MatchRecord players={game.players} stats={game.matchStats} phase={game.phase} variant="modal"/>{me?.isHost&&<button className="primary big" onClick={restartGame}>再来一局</button>}</div></div>}
     </main>
   );
 }
