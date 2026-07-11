@@ -57,10 +57,19 @@ const finishAction = (state: GameState): GameState => {
 
   player.turns += 1;
 
-  if (!state.finalRoundTriggered && getScore(player) >= SCORE_TARGET) {
+  const marketExhausted = ([1, 2, 3] as Level[]).every(
+    (level) => state.decks[level].length === 0 && state.market[level].length === 0,
+  );
+
+  if (!state.finalRoundTriggered && (getScore(player) >= SCORE_TARGET || marketExhausted)) {
     state.finalRoundTriggered = true;
     state.targetTurns = Math.max(...state.players.map((p) => p.turns));
-    state.log = addLog(state, `${player.name} 达到 ${SCORE_TARGET} 分，最终轮开始！`);
+    state.log = addLog(
+      state,
+      marketExhausted
+        ? '所有精灵牌均已离开市集，完成本轮后结算！'
+        : `${player.name} 达到 ${SCORE_TARGET} 分，最终轮开始！`,
+    );
   }
 
   if (state.finalRoundTriggered && state.players.every((p) => p.turns >= (state.targetTurns ?? 0))) {

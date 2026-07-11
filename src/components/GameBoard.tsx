@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ENERGY_TYPES, type EnergyType, type TokenType } from '../game/types';
 import { ENERGY_ICONS, ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
+import { CARD_COUNTS_BY_LEVEL } from '../data/cards';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
 import { useGameStore } from '../store/gameStore';
 import { CreatureCard } from './CreatureCard';
@@ -42,10 +43,10 @@ export function GameBoard() {
             <div className="energy-pool">{ENERGY_TYPES.map((type) => <button className={`energy ${type} ${selected.includes(type) ? 'selected' : ''}`} disabled={state.phase !== 'playing' || state.energyPool[type] === 0} onClick={() => toggle(type)} key={type}><i>{ENERGY_ICONS[type]}</i><span>{ENERGY_LABELS[type]}灵珠</span><b>{state.energyPool[type]}</b></button>)}<div className="energy wild" title="灵珠是万能资源，不能直接拿取；预定公开精灵卡时，如果公共区还有灵珠，会自动获得 1 枚。"><i>{ENERGY_ICONS.wild}</i><span>灵珠<small className="wild-help">万能 · 预定时获得</small></span><b>{state.energyPool.wild}</b></div></div>
             <button className="primary" disabled={!valid || state.phase !== 'playing'} onClick={take}>{selected.length === 1 ? '拿取同色灵珠 ×2' : '拿取所选灵珠'}</button>
             {mayPass ? <button className="pass-turn" onClick={state.passTurn}>当前无可执行行动 · 跳过回合</button> : <button className="text-btn" onClick={() => setSelected([])}>放回选择</button>}
-            <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{state.availableBadges.map((badge) => <div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
+            <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2><p>仅统计永久羁绊，持有灵珠不能代替</p></div>{state.availableBadges.map((badge) => <div className="badge" title="达成条件仅计算已捕捉精灵提供的永久羁绊" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><div className="badge-condition"><span>绊</span><GemRequirements requirement={badge.requirement}/></div></div></div>)}</div>
           </aside>
           <section className="market">
-            <div className="market-title"><div><p className="eyebrow">中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>牌库余量 · {[3, 2, 1].map((level) => `L${level} ${state.decks[level as 1 | 2 | 3].length}`).join(' / ')}</p></div>
+            <div className="market-title"><div><p className="eyebrow">中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>剩余牌量 · {[3, 2, 1].map((level) => { const tier = level as 1 | 2 | 3; return `L${level} ${state.decks[tier].length + state.market[tier].length}/${CARD_COUNTS_BY_LEVEL[tier]}`; }).join(' / ')}</p></div>
             {([3, 2, 1] as const).map((level) => <section className="market-row" key={level}><div className={`deck level-${level}`}><small>精灵牌库</small><b>等级 {level}</b><span>{state.decks[level].length}</span></div><div className="cards">{state.market[level].map((card) => <CreatureCard card={card} player={player} key={card.id}/>)}</div></section>)}
           </section>
           <aside className="right-panel panel player-mat">

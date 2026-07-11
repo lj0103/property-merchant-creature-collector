@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { Badge } from './types';
 import { createGame } from './setup';
-import { canCapture, getEffectiveCost, getWinners } from './rules';
+import { canCapture, canClaimBadge, getEffectiveCost, getWinners } from './rules';
 import { applyGameAction, canPassTurn } from './actions';
 
 describe('核心规则', () => {
@@ -9,6 +10,9 @@ describe('核心规则', () => {
     expect(game.energyPool.flame).toBe(4);
     expect(game.market[1]).toHaveLength(4);
     expect(game.availableBadges).toHaveLength(3);
+    expect(game.decks[1]).toHaveLength(36);
+    expect(game.decks[2]).toHaveLength(26);
+    expect(game.decks[3]).toHaveLength(16);
   });
 
   it('为五人对局初始化足够的能量与徽章', () => {
@@ -29,6 +33,31 @@ describe('核心规则', () => {
       player.energies[type as keyof typeof player.energies] = count;
     });
     expect(canCapture(player, card)).toBe(true);
+  });
+
+  it('徽章仅统计永久羁绊，不统计持有灵珠', () => {
+    const game = createGame(['甲', '乙']);
+    const player = game.players[0];
+    const badge: Badge = { id: 'test-badge', name: '火之试炼', points: 3, requirement: { flame: 2 }, description: '测试' };
+    player.energies.flame = 8;
+    expect(canClaimBadge(player, badge)).toBe(false);
+    player.capturedCards = [
+      { ...game.market[1][0], id: 'fire-bond-1', element: 'flame' },
+      { ...game.market[1][1], id: 'fire-bond-2', element: 'flame' },
+    ];
+    expect(canClaimBadge(player, badge)).toBe(true);
+  });
+
+  it('所有牌库和市集耗尽时启动最终轮', () => {
+    const game = createGame(['甲', '乙']);
+    const lastCard = { ...game.market[1][0], points: 0, cost: {} };
+    game.decks = { 1: [], 2: [], 3: [] };
+    game.market = { 1: [lastCard], 2: [], 3: [] };
+
+    const result = applyGameAction(game, 'p1', { type: 'captureCard', cardId: lastCard.id, source: 'market' });
+    expect(result.ok).toBe(true);
+    expect(result.state.finalRoundTriggered).toBe(true);
+    expect(result.state.log[0].message).toContain('完成本轮后结算');
   });
 
   it('平分时卡少者胜', () => {

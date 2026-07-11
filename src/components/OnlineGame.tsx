@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { ENERGY_ICONS, ENERGY_LABELS, SCORE_TARGET } from '../data/constants';
+import { CARD_COUNTS_BY_LEVEL } from '../data/cards';
 import { canPassTurn, type GameAction } from '../game/actions';
 import { ENERGY_TYPES, type EnergyType, type TokenType } from '../game/types';
 import { getDiscounts, getScore, rankPlayers, tokenCount } from '../game/rules';
@@ -227,10 +228,10 @@ export function OnlineGame({ onBack }: { onBack: () => void }) {
           <div className="energy-pool">{ENERGY_TYPES.map((energy)=><button className={`energy ${energy} ${selected.includes(energy)?'selected':''}`} disabled={!isMyTurn||game.phase!=='playing'||game.energyPool[energy]===0} onClick={()=>toggleEnergy(energy)} key={energy}><i>{ENERGY_ICONS[energy]}</i><span>{ENERGY_LABELS[energy]}灵珠</span><b>{game.energyPool[energy]}</b></button>)}<div className="energy wild" title="灵珠是万能资源，不能直接拿取；预定公开精灵卡时，如果公共区还有灵珠，会自动获得 1 枚。"><i>{ENERGY_ICONS.wild}</i><span>灵珠<small className="wild-help">万能 · 预定时获得</small></span><b>{game.energyPool.wild}</b></div></div>
           <button className="primary" disabled={!isMyTurn||!validEnergySelection||game.phase!=='playing'} onClick={()=>sendAction({type:'takeEnergies',energies:selected.length===1?[selected[0],selected[0]]:selected})}>{selected.length===1?'拿取同色灵珠 ×2':'拿取所选灵珠'}</button>
           {mayPass&&isMyTurn?<button className="pass-turn" onClick={()=>sendAction({type:'passTurn'})}>当前无可执行行动 · 跳过回合</button>:<button className="text-btn" onClick={()=>setSelected([])}>清空选择</button>}
-          <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2></div>{game.availableBadges.map((badge)=><div className="badge" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><GemRequirements requirement={badge.requirement}/></div></div>)}</div>
+          <div className="badges"><div className="panel-heading compact"><span>桌面目标</span><h2>旅者徽章</h2><p>仅统计永久羁绊，持有灵珠不能代替</p></div>{game.availableBadges.map((badge)=><div className="badge" title="达成条件仅计算已捕捉精灵提供的永久羁绊" key={badge.id}><i>✧</i><div className="badge-copy"><strong>{badge.name} <em>+{badge.points}</em></strong><div className="badge-condition"><span>绊</span><GemRequirements requirement={badge.requirement}/></div></div></div>)}</div>
         </aside>
         <section className="market">
-          <div className="market-title"><div><p className="eyebrow">服务器同步 · 中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>牌库余量 · {[3,2,1].map((level)=>`L${level} ${game.decks[level as 1|2|3].length}`).join(' / ')}</p></div>
+          <div className="market-title"><div><p className="eyebrow">服务器同步 · 中央公共牌区</p><h2>雾岚精灵市集</h2></div><p>剩余牌量 · {[3,2,1].map((level)=>{const tier=level as 1|2|3;return `L${level} ${game.decks[tier].length+game.market[tier].length}/${CARD_COUNTS_BY_LEVEL[tier]}`;}).join(' / ')}</p></div>
           {([3,2,1] as const).map((level)=><section className="market-row" key={level}><div className={`deck level-${level}`}><small>精灵牌库</small><b>等级 {level}</b><span>{game.decks[level].length}</span></div><div className="cards">{game.market[level].map((card)=><CreatureCard card={card} player={currentPlayer!} disabled={!isMyTurn} phase={game.phase} onReserve={(cardId)=>sendAction({type:'reserveCard',cardId})} onCapture={(cardId,source)=>sendAction({type:'captureCard',cardId,source})} key={card.id}/>)}</div></section>)}
         </section>
         <aside className="right-panel panel player-mat">

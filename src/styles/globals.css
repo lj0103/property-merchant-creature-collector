@@ -381,6 +381,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
 .badge-copy { min-width: 0; display: grid; gap: 3px; }
 .badge strong { font-size: 10px; }
 .badge em { color: #efc96f; font-style: normal; }
+.badge-condition { min-width: 0; display: flex; align-items: center; gap: 4px; }
+.badge-condition>span { flex: 0 0 15px; width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%; color: #392509; background: #d1aa54; font-size: 7px; font-weight: 900; }
 .badge-requirements { display: flex; align-items: center; gap: 3px; }
 
 .market { min-width: 0; padding: 17px; color: var(--ink); border: 2px solid #bda060; border-radius: 18px; background: linear-gradient(90deg, #eaddbd, #f6edd8 48%, #e7d8b5); box-shadow: inset 0 0 30px #7a582c2d, 0 12px 20px #061b1666; }
@@ -636,29 +638,32 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   }
   .table-inscription { top: 9px; right: 42px; }
   .player-strip {
-    width: min(1100px, calc(100% - 60px));
-    height: 48px;
-    min-height: 48px;
-    gap: 7px;
-    margin: -34px auto 7px;
-    padding: 0 16px;
+    width: min(1000px, calc(100% - 90px));
+    height: 38px;
+    min-height: 38px;
+    gap: 6px;
+    margin: -20px auto 5px;
+    padding: 0 12px;
     overflow: visible;
   }
   .player-strip>div {
-    min-height: 46px;
-    height: 46px;
-    padding: 6px 9px;
-    border-radius: 10px 10px 6px 6px;
-    box-shadow: 0 4px 0 #130b08, 0 7px 12px #04020177;
+    min-height: 36px;
+    height: 36px;
+    gap: 6px;
+    padding: 4px 7px;
+    border-radius: 8px 8px 5px 5px;
+    box-shadow: 0 3px 0 #130b08, 0 5px 9px #04020166;
   }
-  .player-strip>div:nth-child(1), .player-strip>div:nth-child(5) { transform: translateY(5px) rotate(-1deg); }
-  .player-strip>div:nth-child(5) { transform: translateY(5px) rotate(1deg); }
-  .player-strip .avatar { width: 29px; height: 29px; font-size: 11px; }
-  .player-strip strong { font-size: 10px; }
-  .player-strip small { font-size: 7px; }
+  .player-strip>div:nth-child(1), .player-strip>div:nth-child(2), .player-strip>div:nth-child(4), .player-strip>div:nth-child(5) { transform: none; }
+  .player-strip>div.current { border: 2px solid #ffd568; box-shadow: 0 3px 0 #130b08, 0 0 14px #ffd56888; }
+  .player-strip .avatar { width: 23px; height: 23px; color: #fff0a8; font-size: 9px; box-shadow: inset 0 0 0 2px #0f2d27, 0 0 7px #f0ca6588; }
+  .player-strip strong { font-size: 9px; }
+  .player-strip small { font-size: 6px; }
+  .player-strip .seat-number { top: 2px; right: 4px; font-size: 7px; }
+  .player-strip .turn-lamp { bottom: -7px; width: 6px; height: 6px; }
 
   .layout {
-    height: calc(100% - 42px);
+    height: calc(100% - 32px);
     min-height: 0;
     grid-template-columns: clamp(176px, 11.5vw, 220px) minmax(0, 1fr) clamp(225px, 14.5vw, 280px);
     gap: 8px;
@@ -689,7 +694,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .badges {
     min-height: 0;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     align-content: start;
     gap: 3px 5px;
     margin-top: 4px;
@@ -697,10 +702,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
     overflow: hidden;
   }
   .badges .panel-heading { grid-column: 1 / -1; }
-  .badge { min-width: 0; gap: 4px; padding: 3px 0; }
+  .badge { min-width: 0; gap: 6px; padding: 3px 0; }
   .badge>i { width: 23px; height: 23px; flex: 0 0 23px; font-size: 12px; }
   .badge-copy { min-width: 0; gap: 1px; }
-  .badge strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; }
+  .badge strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+  .badge-condition { gap: 3px; }
+  .badge-condition>span { flex-basis: 13px; width: 13px; height: 13px; font-size: 6px; }
   .badge-requirements { gap: 2px; }
   .gem-small { min-width: 23px; min-height: 17px; font-size: 7px; }
   .gem-small i { width: 15px; height: 15px; font-size: 6px; }
@@ -769,14 +776,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #e7c36f; outline-
   .score { font-size: 21px; }
   .section-label { margin: 7px 0 4px; font-size: 8px; }
   .wallet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
-  .wallet .token { min-width: 0; width: 100%; height: 34px; padding: 5px; }
+  .wallet .token { min-width: 34px; width: 34px; height: 34px; aspect-ratio: 1; justify-self: center; padding: 3px; border-radius: 50%; clip-path: circle(50% at 50% 50%); }
   .wallet .token b { font-size: 12px; }
   .discounts { gap: 2px; }
-  .discounts span { min-width: 0; width: 100%; height: 28px; padding: 3px; font-size: 7px; }
-  .reserved { max-height: 92px; overflow: hidden; }
-  .reserved .creature { height: auto; min-height: 52px; margin-bottom: 4px; }
-  .reserved .card-top { min-height: 12px; }
-  .reserved .costs { min-height: 15px; }
+  .discounts span { flex: 0 0 28px; min-width: 28px; width: 28px; height: 28px; aspect-ratio: 1; padding: 2px; border-radius: 50%; clip-path: circle(50% at 50% 50%); font-size: 7px; }
+  .reserved { flex: 0 0 auto; max-height: none; display: grid; gap: 3px; overflow: visible; }
+  .reserved .creature { height: 54px; min-height: 54px; display: grid; grid-template-columns: minmax(52px, 1fr) auto; grid-template-rows: 11px 18px 17px; gap: 1px 4px; margin: 0; padding: 3px 5px; }
+  .reserved .card-top { grid-column: 1 / -1; grid-row: 1; min-height: 11px; }
+  .reserved .creature h3 { grid-column: 1; grid-row: 2; align-self: center; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+  .reserved .costs { grid-column: 2; grid-row: 2; min-height: 16px; justify-content: flex-end; flex-wrap: nowrap; }
+  .reserved .gem-cost { min-width: 18px; min-height: 14px; }
+  .reserved .gem-cost i { width: 12px; height: 12px; font-size: 5px; }
+  .reserved .card-actions { grid-column: 1 / -1; grid-row: 3; padding-top: 0; }
+  .reserved .card-actions button { padding: 2px; font-size: 6px; }
   .reserved>p { padding: 7px; font-size: 7px; }
   .player-gem-row { min-height: 35px; padding: 2px 3px; }
   .player-gem-row>strong { font-size: 7px; }

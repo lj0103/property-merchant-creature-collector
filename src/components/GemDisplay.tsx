@@ -11,7 +11,7 @@ export function GemIcon({ type, count, size = 'small' }: { type: TokenType; coun
 }
 
 export function GemRequirements({ requirement }: { requirement: Partial<Record<EnergyType, number>> }) {
-  return <div className="badge-requirements" aria-label="徽章所需灵珠">{Object.entries(requirement).map(([type, count]) => <GemIcon type={type as EnergyType} count={count} key={type}/>)}</div>;
+  return <div className="badge-requirements" aria-label="徽章所需永久羁绊">{Object.entries(requirement).map(([type, count]) => <GemIcon type={type as EnergyType} count={count} key={type}/>)}</div>;
 }
 
 export function PlayerGemSummary({ players, currentPlayerId }: { players: Player[]; currentPlayerId?: string }) {
